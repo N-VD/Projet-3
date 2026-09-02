@@ -1,6 +1,6 @@
 # Equpipe
 ##  Role
-|:**Role**:|:**Qui**:|:**Responsabilité**:|
+|**:Role:**|**:Qui:**|**:Responsabilité:**|
 |:---|:---|:---|
 |**Product owner**| Jerome| celui qui decide quoi ajouter avec l'aide du backlog |    
 |**Client** | Prof:Dorra Riahi|Approuve  le sujet,juge notre progresssion nos travaux |
