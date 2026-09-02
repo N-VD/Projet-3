@@ -17,7 +17,7 @@
     * **probleme rencontrer ?**
  <br>   
 
-* **La Planification:**  Apres la **[Mêlée quotidienne :](https://archambaultv.github.io/2026A-420-5D1-MA-Gr2/docs/notes_de_cours/agile/agile_et_scrum#la-m%C3%AAl%C3%A9e-quotidienne-concr%C3%A8tement)** nous allons planifier la suite du projet
+* **La Planification:**  Apres la <span style="color: black;">**[Mêlée quotidienne :](https://archambaultv.github.io/2026A-420-5D1-MA-Gr2/docs/notes_de_cours/agile/agile_et_scrum#la-m%C3%AAl%C3%A9e-quotidienne-concr%C3%A8tement)**</span> nous allons planifier la suite du projet
  * QUOI : la priorité
  * Comment : repartire les taches
 
