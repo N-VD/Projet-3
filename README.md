@@ -10,4 +10,4 @@ C'est la virtualisation de quelques jeux d'argent d'un casino pour que notre cli
 
 Raphael, Jerome, Daniel , Kerian, Andy
 
-Lien vers le backlog[ICI]()
+Lien vers le backlog[ICI](https://github.com/N-VD/Projet-3/blob/main/Doc/02-Backlog.md)
