@@ -11,4 +11,16 @@
 
 
 ##  Rituel
+* Mêlée quotidienne : Au debut du cours,courte resumer de ce que nous avons fait en repondant a  3 question : 
+    * progression ?
+    * sujet?
+    * probleme rencontrer ?
+
+## Définition de "Terminer"
+
+
+## Conventions
+
+## Contribution individuelle 
+
 
