@@ -49,13 +49,13 @@
 
 
 ## Conventions
-|**nom**|**branch**|
+|**branch**|**commit**|**Revu**|
 |:---|:---|
-|Kerian|kerian|
-|Jerome|jerome|
-|Andy|aandy|
-|Raphael|raphael|
-|Daniel|D|
+|K=Kerian|mot cle+ce que la personne ex:corection de,ajoute de ...|git merge
+|J=Jerome|
+|A=Andy|
+|R=Raphael|
+|D=Daniel|
 
 
 
