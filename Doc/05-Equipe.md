@@ -43,13 +43,13 @@
     * **Tous les branchs sont merg dans la branch principal**
     * **Toutes les fonctionnalités de l'application sont a jour et fonctionnel**
     * **Aucun message erreur lors la console**
-    * ** Toutes les criteres du travail sont respecter**
-    * ** l'application démarre toujours avec Docker à partir d'un clone neuf.** 
+    * **Toutes les criteres du travail sont respecter**
+    * **l'application démarre toujours avec Docker à partir d'un clone neuf.** 
 
 
 
 ## Conventions
-|nom|branch|
+|**nom**|**branch**|
 |;---|;---|
 |Kerian|kerian|
 |Jerome|jerome|
@@ -60,8 +60,8 @@
 
 
 ## Contribution individuelle 
-|nom|tache|statut|lien|
-|;---|;---|;---|;---|
+|**nom**|**tache**|**statut**|
+|;---|;---|;---|
 |Kerian|vision.md|1|
 |Jerome|backlog|1|
 |Andy|readme.md,risque|1/2|
