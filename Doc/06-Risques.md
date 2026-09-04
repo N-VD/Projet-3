@@ -40,28 +40,5 @@ Pour mesurer l'efficacité de nos plans d'action backend et frontend, nous utili
 | **R05** | Gestion | Glissement de périmètre : surcharge du Backlog GitHub et retard de livraison. | 4 | 3 | **12** | Définir un MVP strict (Blackjack + Chat fonctionnels). Les autres jeux passent en bonus de fin. | 1 | 3 (P1×I3) | **9.0** | Andy |
 
 ---
-
-## 4. Focus Backend & Démonstration du Levier
-
-### 📌 R03 - Concurrence et Gestion de la BD (Solde Joueur)
-*   **Scénario catastrophe :** Un joueur clique deux fois très vite sur "Miser 50$". Si le backend traite les requêtes en parallèle sans protection, la BD peut déduire 50$ au lieu de 100$, permettant au joueur de parier de l'argent virtuel qu'il n'a pas.
-*   **Démonstration du Levier :**
-    *   *Criticité Initiale :* 12 (P:3, I:4)
-    *   *Mesure :* Mise en place de transactions SQL `BEGIN TRANSACTION ... COMMIT` lors des mouvements d'argent.
-    *   *Après mesure (Résiduelle) :* La probabilité tombe à 1. L'impact passe à 3 (un bug de ralentissement potentiel mais plus de triche). Criticité résiduelle = 3.
-    *   *Effort estimé :* 2 (Facile à intégrer dans les requêtes de l'historique/solde).
-    *   **Calcul du Levier :** `(12 - 3) / 2 = 4.5` *(Excellent investissement de temps).*
-
-### 📌 R04 - Intégrité de l'Historique de session
-*   **Scénario catastrophe :** Le serveur crash au milieu d'une partie ou la connexion internet du joueur coupe. Sa session est détruite et son historique de gains/pertes est perdu, empêchant le joueur de suivre son bilan.
-*   **Démonstration du Levier :**
-    *   *Criticité Initiale :* 8 (P:2, I:4)
-    *   *Mesure :* Création d'une table BD `game_history` où chaque ligne insérée possède un index unique auto-incrémenté lié à l'ID utilisateur, mise à jour à chaque action (Hit / Stand / Bust) plutôt qu'en fin de session complète.
-    *   *Après mesure (Résiduelle) :* La probabilité tombe à 1, l'impact à 2. Criticité résiduelle = 2.
-    *   *Effort estimé :* 2 (Conception d'un schéma de table propre).
-    *   **Calcul du Levier :** `(8 - 2) / 2 = 3.0` *(Mesure indispensable pour valider la feature d'historique du sujet).*
-
----
-
-## 5. Suivi du Projet
+## 4. Suivi du Projet
 Ce document sera mis à jour à chaque sprint d'équipe sur GitHub. Si Daniel ou Raphael constatent des ralentissements ou des bugs majeurs lors des tests d'intégration entre les sockets et la base de données, la probabilité du risque technique sera réévaluée lors du point hebdomadaire.
