@@ -51,11 +51,12 @@
 ## Conventions
 |**branch**|**commit**|**Revu**|
 |:---|:---|
+
 |K=Kerian|mot cle+ce que la personne ex:corection de,ajoute de ...|git merge
-|J=Jerome|
-|A=Andy|
-|R=Raphael|
-|D=Daniel|
+|J=Jerome|||
+|A=Andy|||
+|R=Raphael|||
+|D=Daniel|||
 
 
 
