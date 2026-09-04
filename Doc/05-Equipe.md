@@ -50,7 +50,7 @@
 
 ## Conventions
 |**nom**|**branch**|
-|;---|;---|
+|:---|:---|
 |Kerian|kerian|
 |Jerome|jerome|
 |Andy|aandy|
@@ -61,7 +61,7 @@
 
 ## Contribution individuelle 
 |**nom**|**tache**|**statut**|
-|;---|;---|;---|
+|:---|:---|:---|
 |Kerian|vision.md|1|
 |Jerome|backlog|1|
 |Andy|readme.md,risque|1/2|
