@@ -1,0 +1,67 @@
+# Dossier de Gestion des Risques Pré-Projet
+**Nom du Projet :** BelleVibe Casino (Projet 3)  
+**Équipe :** Raphael, Jerome, Daniel, Kerian, Andy  
+**Date :** Septembre 2026  
+**Version :** 1.0  
+**Dépôt GitHub :** [Projet-3](https://github.com)
+**Responsable du document :** [Andy Douangpanya / Developpeur ]
+---
+
+## 1. Introduction et Objectifs
+Ce document identifie et analyse les risques potentiels en amont du développement du projet **BelleVibe Casino**. L'objectif est d'anticiper les dérives de budget, de planning ou de qualité technique (notamment le temps réel et la gestion financière des jetons), et de définir des plans d'action immédiats pour l'équipe.
+
+---
+
+## 2. Échelle d'Évaluation (Matrice & Formule du Levier)
+
+### Calcul de la Criticité Initiale
+La criticité brute d'un risque se calcule ainsi :  
+`Criticité (C) = Probabilité (P) × Impact (I)` (Score de 1 à 25).
+*   **Probabilité (P) :** 1 (Très faible) à 5 (Presque certain)
+*   **Impact (I) :** 1 (Mineur) à 5 (Critique / Bloquant pour le projet)
+
+### Calcul du Levier de Mitigation (Risk Leverage)
+Pour mesurer l'efficacité de nos plans d'action backend et frontend, nous utilisons le calcul du **levier de réduction du risque** :
+`Levier = (Criticité Initiale - Criticité Résiduelle) / Effort de mise en place`
+*   **Criticité Résiduelle :** Le score du risque *après* application de notre plan d'action.
+*   **Effort (E) :** Estimé de 1 (Très facile/rapide) à 5 (Trame technique complexe à coder).
+*   *Interprétation :* Un levier **> 1.5** signifie que la mesure est hautement rentable pour l'équipe.
+
+---
+
+## 3. Matrice Synthétique des Risques (Inclus Backend & Base de Données)
+
+| ID | Catégorie | Description du Risque | P | I | C | Mesure de Prévention / Atténuation | E | C. Résiduelle | Levier | Resp. |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
+| **R01** | Temps réel | Désynchronisation des WebSockets entre le croupier en direct et les joueurs. | 3 | 4 | **12** | Mettre en place un heartbeat (ping/pong) et un état global centralisé côté serveur. | 2 | 3 (P1×I3) | **4.5** | Daniel |
+| **R02** | Sécurité | Triche du joueur via la modification locale de ses variables de solde (front-end). | 3 | 5 | **15** | **Zéro confiance au front :** Le serveur backend est le seul maître du solde et valide chaque mise. | 1 | 2 (P1×I2) | **13.0** | Jerome |
+| **R03** | **Backend / BD** | **Concurrence et corruption du solde lors des requêtes simultanées en Base de Données.** | 3 | 4 | **12** | Utiliser des **transactions ACID** SQL ou des verrous (Locks) en BD pour empêcher le double-débit. | 2 | 3 (P1×I3) | **4.5** | Raphael |
+| **R04** | **Backend / BD** | **Perte ou falsification de l'historique des gains/pertes lors d'une déconnexion d'un joueur.** | 2 | 4 | **8** | Écriture asynchrone systématique en BD dès la fin d'une main. Table d'historique en lecture seule (Append-only). | 2 | 2 (P1×I2) | **3.0** | Kerian |
+| **R05** | Gestion | Glissement de périmètre : surcharge du Backlog GitHub et retard de livraison. | 4 | 3 | **12** | Définir un MVP strict (Blackjack + Chat fonctionnels). Les autres jeux passent en bonus de fin. | 1 | 3 (P1×I3) | **9.0** | Andy |
+
+---
+
+## 4. Focus Backend & Démonstration du Levier
+
+### 📌 R03 - Concurrence et Gestion de la BD (Solde Joueur)
+*   **Scénario catastrophe :** Un joueur clique deux fois très vite sur "Miser 50$". Si le backend traite les requêtes en parallèle sans protection, la BD peut déduire 50$ au lieu de 100$, permettant au joueur de parier de l'argent virtuel qu'il n'a pas.
+*   **Démonstration du Levier :**
+    *   *Criticité Initiale :* 12 (P:3, I:4)
+    *   *Mesure :* Mise en place de transactions SQL `BEGIN TRANSACTION ... COMMIT` lors des mouvements d'argent.
+    *   *Après mesure (Résiduelle) :* La probabilité tombe à 1. L'impact passe à 3 (un bug de ralentissement potentiel mais plus de triche). Criticité résiduelle = 3.
+    *   *Effort estimé :* 2 (Facile à intégrer dans les requêtes de l'historique/solde).
+    *   **Calcul du Levier :** `(12 - 3) / 2 = 4.5` *(Excellent investissement de temps).*
+
+### 📌 R04 - Intégrité de l'Historique de session
+*   **Scénario catastrophe :** Le serveur crash au milieu d'une partie ou la connexion internet du joueur coupe. Sa session est détruite et son historique de gains/pertes est perdu, empêchant le joueur de suivre son bilan.
+*   **Démonstration du Levier :**
+    *   *Criticité Initiale :* 8 (P:2, I:4)
+    *   *Mesure :* Création d'une table BD `game_history` où chaque ligne insérée possède un index unique auto-incrémenté lié à l'ID utilisateur, mise à jour à chaque action (Hit / Stand / Bust) plutôt qu'en fin de session complète.
+    *   *Après mesure (Résiduelle) :* La probabilité tombe à 1, l'impact à 2. Criticité résiduelle = 2.
+    *   *Effort estimé :* 2 (Conception d'un schéma de table propre).
+    *   **Calcul du Levier :** `(8 - 2) / 2 = 3.0` *(Mesure indispensable pour valider la feature d'historique du sujet).*
+
+---
+
+## 5. Suivi du Projet
+Ce document sera mis à jour à chaque sprint d'équipe sur GitHub. Si Daniel ou Raphael constatent des ralentissements ou des bugs majeurs lors des tests d'intégration entre les sockets et la base de données, la probabilité du risque technique sera réévaluée lors du point hebdomadaire.
