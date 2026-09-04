@@ -21,7 +21,7 @@ Notre applications est une plaforme de jeux d'argents en ligne.
 
 
 ## Out scope
-| Élément | Limite / Description |
+| Fonctionnalité | Limite / Description |
 | :--- | :--- |
 | **Transactions** | Aucun argent réel ne sera introduit dans l'application. |
 | **Application Mobile** | Aucune application mobile n'est prévue pour le moment. |
