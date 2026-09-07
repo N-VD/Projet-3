@@ -65,7 +65,7 @@ Structure
 |:---|:---|:---|
 |Kerian|vision.md|[TIcket3](https://github.com/N-VD/Projet-3/issues/8)|
 |Jerome|backlog|[Ticket4](https://github.com/N-VD/Projet-3/issues/4)|
-|Andy|readme.md,risque|[Ticket2](https://github.com/N-VD/Projet-3/issues/2)[Ticket8](https://github.com/N-VD/Projet-3/issues/8)|
+|Andy|readme.md,risque|[Ticket2](https://github.com/N-VD/Projet-3/issues/2) [Ticket8](https://github.com/N-VD/Projet-3/issues/8)|
 |Raphael|backlog|[Ticket4](https://github.com/N-VD/Projet-3/issues/4)|
 |Daniel|equipe|[Ticket7](https://github.com/N-VD/Projet-3/issues/7)|
 
