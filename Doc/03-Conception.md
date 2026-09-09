@@ -4,51 +4,49 @@
 # Route
 
 ## Authentification
-    accéder a son compte
-        * POST /login
-
-    créer un compte
+   * accéder a son compte <br>
+    * POST /login
+* créer un compte <br>
 
     * POST /createAcount
 
-    Deconnecter 
+* Deconnecter <br>
     * Get /logOut
 
 ## Compte
-    modifer le mot passe
-    
+   * modifer le mot passe<br>
     * PATCH /chMdp
 
-    modifier le userName
+    * modifier le userName <br>
 
-    * PATCH /chUserName
+    * PATCH /chUserName 
 
-    Voir le sold
+    * Voir le sold<br>
 
     * GET /sold
 
-    Voir les historique
+   *  Voir les historique <br>
 
     * GET /hist
 
-    banissement
+    * banissement <br>
 
     * PATCH /ban
 
-    supprimer le compte
+    * supprimer le compte <br>
 
     * DELETE /supCompte
 
 ## Blackjack (en jeux)
 
-    Voir les salons de joueur
-    *   GET /salon
+    * Voir les salons de joueur <br>
+      * GET /salon
 
-    rejoin une partie 
+   *  rejoin une partie  <br>
 
     * POST /join
 
-    Modification de role
+   * Modification de role <br>
 
     * POST /{id}/chrole
 
