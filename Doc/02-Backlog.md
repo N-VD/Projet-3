@@ -2,15 +2,15 @@
 
 ## Comptes
 
-1. En tant qu'utilisateur, je veux me connecter à mon compte, afin d'accéder à mes données personnelles.
-    - Une fois connecté, l'utilisateur est redirigé vers son tableau de bord.
-    - Avec un mot de passe incorrect, un message d'erreur générique s'affiche sans révéler si c'est le courriel ou le mot de passe qui est fautif.
-
-2. En tant qu'utilisateur, je veux créer un compte, afin de pouvoir accéder au produit avec une identité qui m'appartient.
+1. En tant que visiteur, je veux créer un compte joueur, afin de pouvoir accéder au produit avec une identité qui m'appartient.
     - Un même courriel ne peut être utilisé deux fois pour créer un compte.
     - Le nom d'utilisateur doit être unique.
     - Le mot de passe doit respecter les règles (ex. min. 8 caractères, dont un caractère spécial) sinon le formulaire refuse la soumission et indique pourquoi.
     - Une fois le compte créé, le joueur est automatiquement connecté et redirigé vers son tableau de bord.
+
+2. En tant qu'utilisateur, je veux me connecter à mon compte, afin d'accéder à mes données personnelles.
+    - Une fois connecté, l'utilisateur est redirigé vers son tableau de bord.
+    - Avec un mot de passe incorrect, un message d'erreur générique s'affiche sans révéler si c'est le courriel ou le mot de passe qui est fautif.
 
 3. En tant qu'utilisateur connecté, je veux pouvoir me déconnecter, afin de pouvoir me connecter à un autre compte ou d'en créer un nouveau.
     - Une fois déconnecté, le joueur est redirigé vers la page de connexion.
@@ -29,7 +29,7 @@
 
 ## Portefeuille
 
-7. En tant qu'utilisateur connecté, je veux que mon solde soit tout le temps visible, afin de savoir combien d'argent il me reste en tout temps.
+7. En tant qu'utilisateur connecté, je veux que mon solde soit tout le temps visible, afin de savoir combien je peux me permette de miser  
     - Le solde ne peut pas être négatif.
     - Le solde doit être mis à jour en temps réel à chaque fois que ce dernier est susceptible à des modifications. (Ajouts, pertes, retraits, etc...)
 
@@ -80,66 +80,79 @@
     - Une fois que le joueur n'a plus d'argent, l'option pour miser est désactiver.
     - Le joueur doit placer sa mise dans les [X secondes] suivant le début de la période de mise; sinon, il est automatiquement mis en mode spectateur pour cette main.
 
-17. En tant que joueur, je veux pouvoir faire les actions de base du BlackJack (hit, stand, double, split), afin de tenter de battre la main du dealer et de faire le plus d'argent possible dans le processus.
+17. En tant que joueur, je veux pouvoir faire les actions de base du BlackJack (hit, stand, double, split) sur ma main, afin de tenter d'obtenir la meilleure main possible avant que le dealer ne joue.
     - Le joueur ne peut pas double ou split si son solde est inférieur à sa mise.
-    - Une fois que tous les joueurs de la table ont terminé leur main (stand, bust, ou blackjack), le dealer révèle sa carte cachée et tire des cartes jusqu'à atteindre au moins 17.
-    - Une fois la main fini et gagné, le gain en argent s'affiche. 
-    - Si le joueur dépasse 21, la main se termine immédiatement et la perte est indiquée clairement.
-    - En cas d'égalité avec le dealer, la mise est remboursée et le résultat est affiché comme "égalité".
+    - Si le joueur dépasse 21, sa main se termine immédiatement et la perte est indiquée clairement.
     - Un blackjack naturel (21 avec les 2 premières cartes) est identifié distinctement d'un 21 obtenu autrement.
 
-18. En tant que joueur, je veux voir les cartes distribuées (les miennes, celles du dealer, celles des autres joueurs), afin de savoir quoi faire comme action.
+18.  En tant que joueur, je veux que le dealer termine son tour une fois toutes les mains jouées, afin de connaître le résultat de la partie et l'argent gagné ou perdu.
+    - Une fois que tous les joueurs de la table ont terminé leur main (stand, bust, ou blackjack), le dealer révèle sa carte cachée et tire des cartes jusqu'à atteindre au moins 17.
+    - Une fois la main finie et gagnée, le gain en argent s'affiche.
+    - En cas d'égalité avec le dealer, la mise est remboursée et le résultat est affiché comme « égalité ».
+
+19.  En tant que joueur, je veux voir les cartes distribuées (les miennes, celles du dealer, celles des autres joueurs), afin de savoir quoi faire comme action.
     - Les deux premières cartes du joueur sont visibles dès la distribution.
     - Une seule carte du dealer est visible tant que tous les joueurs n'ont pas terminé leur main; la deuxième reste cachée.
     - Les cartes des autres joueurs à la table sont visibles par tous.
     - Chaque carte tirée (hit) apparaît en temps réel chez tous les joueurs de la table.
 
-19. En tant que joueur, je veux pouvoir communiquer avec les autres joueurs et le dealer de ma table à travers un salon de discussion, afin d'échanger pendant la partie.
+20.  En tant que joueur, je veux pouvoir communiquer avec les autres joueurs et le dealer de ma table à travers un salon de discussion, afin d'échanger pendant la partie.
     - Les messages apparaissent en temps réel chez les autres utilisateurs.
     
 ## Dealer
 
-20. En tant que dealer, je veux pouvoir créer un salon, afin d'accueillir des joueurs et animer une partie.
+
+21. En tant que dealer, je veux pouvoir créer un salon, afin d'accueillir des joueurs et animer une partie.
     - Une fois le salon créé, il s'affiche dans la liste des salons sur la page d'accueil.
     - Les utilisateurs peuvent rejoindre la partie créé.
     - Un dealer ne peut créer un salon si ce dernier possède déjà un autre salon en cours.
 
-21. En tant que dealer, je veux pouvoir mettre fin au salon, afin de terminer la partie que j'anime.
+22. En tant que dealer, je veux pouvoir mettre fin au salon, afin de terminer la partie que j'anime.
     - Une fois le salon fini, il disparaît de la liste des salons sur la page d'accueil.
     - Les utilisateurs connectés au salon fini sont redirigés vers la page d'accueil.
     - Le dealer peut mettre fin au salon seulement si aucune main est en cours.
     - Un avertissement s'affiche au moins cinq minutes avant la fin du salon.
 
+
 # Liste des épiques
 
 | Épique | Ce qu'elle couvre |
 |---|---|
-| Comptes | Création de compte, connexion/déconnexion, gestion des identifiants (mot de passe, nom d'utilisateur, récupération). |
-| Portefeuille | Solde du joueur, dépôts et retraits, historique des transactions. |
+| Comptes | Auto-inscription du rôle joueur, connexion/déconnexion, gestion des identifiants (mot de passe, nom d'utilisateur, récupération). |
+| Portefeuille | Solde du joueur, dépôts et retraits (argent virtuel), historique des transactions. |
 | Salons | Découverte des tables actives, entrée comme spectateur, passage de spectateur à joueur, sortie de table. |
-| Blackjack | Déroulement d'une partie : mise, actions de jeu, tour du dealer, résultats, chat. |
+| Blackjack | Déroulement d'une partie : mise, actions du joueur, tour du dealer et résolution, chat. |
 | Jeu responsable | Auto-exclusion temporaire, suppression de compte. |
+| Dealer | Créer/terminer un salon, interface restreinte (pas de solde ni de mise). Comptes dealer créés par seed en base de données — aucun récit de création/administration. |
 
 # Liste ordonnée des récits
 
-| # | Récit | Épique | Points | Sprint |
-|---|---|---|---|---|
-| 1 | Créer un compte | Comptes | 5 | 1 |
-| 2 | Se connecter | Comptes | 3 | 1 |
-| 3 | Se déconnecter | Comptes | 1 | 1 |
-| 4 | Voir mon solde en tout temps | Portefeuille | 3 | 1 |
-| 5 | Voir les salons actifs depuis la page d'accueil | Salons | 3 | 1 |
-| 6 | Entrer dans un salon en tant que spectateur | Salons | 3 | 1 |
-| 7 | Passer de spectateur à joueur | Salons | 5 | 1 |
-| 8 | Miser sur une main | Blackjack | 5 | 1 |
-| 9 | Voir les cartes distribuées | Blackjack | 5 | 2 |
-| 10 | Faire les actions de base (hit, stand, double, split) | Blackjack | 13 | 2 |
-| 11 | Quitter la table | Blackjack | 3 | 2 |
-| 12 | Consulter mon historique de transactions | Portefeuille | 5 | 2 |
-| 13 | Retirer et ajouter de l'argent | Portefeuille | 5 | 2 |
-| 14 | Réinitialiser mon mot de passe oublié | Comptes | 3 | 3 |
-| 15 | Changer mon mot de passe | Comptes | 2 | 3 |
-| 16 | Changer mon nom d'utilisateur | Comptes | 2 | 3 |
-| 17 | Communiquer via le salon de discussion | Blackjack | 5 | 3 |
-| 18 | M'auto-exclure temporairement | Jeu responsable | 5 | 3 |
-| 19 | Supprimer mon compte | Jeu responsable | 3 | 3 |
+| # | Récit | Épique | Points | Sprint | MoSCoW |
+|---|---|---|---|---|---|
+| 1 | Créer un compte (visiteur → joueur) | Comptes | 5 | 1 | Must |
+| 2 | Se connecter | Comptes | 3 | 1 | Must |
+| 3 | Se déconnecter | Comptes | 1 | 1 | Must |
+| 9 | Retirer et ajouter de l'argent | Portefeuille | 5 | 1 |  Must |
+| 19 | Voir les cartes distribuées | Blackjack | 8 | 1 | Must |
+| 21 | Créer un salon (dealer) | Dealer | 8 | 1 | Must |
+| 22 | Terminer un salon (dealer) | Dealer | 3 | 1 | Must |
+| 12 | Voir les salons actifs depuis la page d'accueil | Salons | 3 | 2 | Must |
+| 7 | Voir mon solde en tout temps | Portefeuille | 3 | 2 | Should |
+| 13 | Entrer dans un salon en tant que spectateur | Salons | 3 | 2 | Must |
+| 14 | Passer de spectateur à joueur | Salons | 5 | 2 | Must |
+| 15 | Quitter la table | Blackjack | 3 | 2 | Must |
+| 16 | Miser sur une main | Blackjack | 5 | 2 | Must |
+| 17 | Jouer sa main (hit, stand, double, split) | Blackjack | 5 | 2 | Must |
+| 18 | Résolution de la main face au dealer | Blackjack | 5 | 3 | Must |
+| 8 | Consulter mon historique de transactions | Portefeuille | 5 | 3 | Should |
+| 20 | Communiquer via le salon de discussion | Blackjack | 5 | 3 | Should |
+| 4 | Réinitialiser mon mot de passe oublié | Comptes | 3 | 3 |  Could |
+| 5 | Changer mon mot de passe | Comptes | 2 | 3 |  Should |
+| 6 | Changer mon nom d'utilisateur | Comptes | 2 | 3 | Should |
+| 10 | M'auto-exclure temporairement | Jeu responsable | 5 | 3 | Could |
+| 11 | Supprimer mon compte | Jeu responsable | 3 | 3 | Could |
+ 
+
+ Sprint 1 : 33
+ Sprint 2 : 27
+ Sprint 3 : 30
