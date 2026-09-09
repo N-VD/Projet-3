@@ -63,7 +63,7 @@ Structure
 ## Contribution individuelle 
 |**nom**|**tache**|**Contribution**|
 |:---|:---|:---|
-|Kerian|vision.md|[TIcket3](https://github.com/N-VD/Projet-3/issues/3)|
+|Kerian|vision.md|[Ticket3](https://github.com/N-VD/Projet-3/issues/3) [Ticket6] (https://github.com/N-VD/Projet-3/issues/6)|
 |Jerome|backlog|[Ticket4](https://github.com/N-VD/Projet-3/issues/4)|
 |Andy|readme.md,risque|[Ticket2](https://github.com/N-VD/Projet-3/issues/2) [Ticket8](https://github.com/N-VD/Projet-3/issues/8)|
 |Raphael|backlog|[Ticket4](https://github.com/N-VD/Projet-3/issues/4)|
