@@ -48,7 +48,7 @@ Les blocages techniques (bug de socket, problème d'authentification JWT, confli
 Aucun commit sur une branche de fonctionnalité prioritaire pendant plus de 48 h en pleine période de sprint actif.
 
 **Mesure d'atténuation**  
-Stand-up bihebdomadaire obligatoire (lundi et jeudi) : chaque membre énonce en deux phrases ce qu'il a fait, ce qu'il fait, et s'il est bloqué. Tout blocage déclaré lors du stand-up est assigné à un binôme pour déblocage dans les 24 h. Si la remise risque de glisser, on en informe le chargé de cours 72 h à l'avance, pas 2 h avant.
+Stand-up bihebdomadaire obligatoire (mercredi et Vendredi) : chaque membre énonce en deux phrases ce qu'il a fait, ce qu'il fait, et s'il est bloqué. Tout blocage déclaré lors du stand-up est assigné à un binôme pour déblocage dans les 24 h. Si la remise risque de glisser, on en informe le chargé de cours 72 h à l'avance, pas 2 h avant.
 
 ---
 
