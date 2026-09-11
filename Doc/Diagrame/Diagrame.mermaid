@@ -1,0 +1,9 @@
+---
+title: Order example
+---
+erDiagram
+    CUSTOMER ||--o{ GAME : watch
+    CUSTOMER ||..|{ ACCOUNT : use
+    DEALER ||..|{ DEALER-ACCOUNT : use
+    ACCOUNT ||--o{ GAME : play
+    DEALER-ACCOUNT ||..|{ GAME : host
