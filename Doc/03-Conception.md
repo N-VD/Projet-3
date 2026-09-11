@@ -20,7 +20,7 @@
 ## 	Dealer
 1. POST /newGame Les Dealer pourront creer une partie
 
-2. POST /closeRoom Les Dealer pourront fermer un salon une fois la partie terminer.
+
 
 
 
