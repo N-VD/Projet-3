@@ -1,5 +1,7 @@
 # Route
+
 ## Authentification
+
     accéder a son compte
         * POST /login
 
@@ -7,12 +9,13 @@
 
     * POST /createAcount
 
-    Deconnecter 
+    Deconnecter
     * Get /logOut
 
 ## Compte
+
     modifer le mot passe
-    
+
     * PATCH /chMdp
 
     modifier le userName
@@ -40,7 +43,7 @@
     Voir les salons de joueur
     *   GET /salon
 
-    rejoin une partie 
+    rejoin une partie
 
     * POST /join
 
@@ -48,21 +51,10 @@
 
     * POST /{id}/chrole
 
+## Choix technique
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+| Technologie Choisie | Pourquoi ?                                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| NoSQL               | Permet de ne pas avoir de structure exacte pour la flexibilité.                         |
+| React               | Cela permet d'avoir un environnement dynamique et donne accès au server side rendering. |
+| Caméra / Python    | Avoir une IA qui permet d'identifier des objets réels tel que des cartes                |
