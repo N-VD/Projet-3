@@ -1,8 +1,4 @@
-# Conception
-
-
 # Route
-
 ## Authentification
     accéder a son compte
         * POST /login
