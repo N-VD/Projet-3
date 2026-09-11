@@ -3,10 +3,14 @@
 
 ### BelleVibe Casino
 
-C'est la virtualisation de quelques jeux d'argent d'un casino pour que notre client, BelleVibe Casino, puisse continuer à répondre aux demandes de ses joueurs fidèles et continuer à faire ses chiffres d'affaires.
+Dans ce projet, nous créons un casino en ligne pour un de nos clients, BelleVibe Casino. Seulement quelques jeux d'argent seront intégrés, dont le Blackjack. Le joueur pourra miser son argent pour en gagner plus ou en perdre plus. Ce casino en ligne aura un salon de discussion en direct pour que les joueurs puissent communiquer entre eux et avec le croupier. Le joueur pourra jouer en temps réel, le croupier distribuant les cartes en direct. Le casino permet aussi aux joueurs de consulter un historique de leurs gains et pertes durant leur session de jeu.
 
+### Table des matières
 
-## Equipe:
+- [BelleVibe Casino](#bellevibe-casino)
+- [Equipe](#equipe)
+
+### Equipe:
 
 Raphael, Jerome, Daniel , Kerian, Andy
 
