@@ -3,17 +3,16 @@
 
 ### BelleVibe Casino
 
-Dans ce projet, nous créons un casino en ligne pour un de nos clients, BelleVibe Casino. Seulement quelques jeux d'argent seront intégrés, dont le Blackjack. Le joueur pourra miser son argent pour en gagner plus ou en perdre plus. Ce casino en ligne aura un salon de discussion en direct pour que les joueurs puissent communiquer entre eux et avec le croupier. Le joueur pourra jouer en temps réel, le croupier distribuant les cartes en direct. Le casino permet aussi aux joueurs de consulter un historique de leurs gains et pertes durant leur session de jeu.
-
-### Table des matières
-
-- [BelleVibe Casino](#bellevibe-casino)
-- [Equipe](#equipe)
+BelleVibe Casino est une plateforme de casino en ligne entièrement dédiée au blackjack, offrant une expérience immersive avec des croupiers en direct diffusés par vidéo. Les joueurs misent en temps réel pendant que le croupier distribue les cartes en direct, créant une atmosphère de casino authentique. La plateforme intègre également un salon de discussion en direct permettant aux joueurs d'échanger entre eux et avec le croupier, ainsi qu'un historique détaillé des gains et pertes pour chaque session de jeu.
 
 ### Equipe:
 
-Raphael, Jerome, Daniel , Kerian, Andy
+Raphaël, Jérôme, Daniel , Kerian, Andy
 
-Lien vers le backlog [BackLog](https://github.com/N-VD/Projet-3/blob/main/Doc/02-Backlog.md)
+## Liens utiles
 
-Liens vers les doccuments [Doccuments](https://github.com/N-VD/Projet-3/tree/main/Doc)
+Lien vers le backlog : [BackLog](https://github.com/N-VD/Projet-3/blob/main/Doc/02-Backlog.md)
+
+Lien vers les doccuments : [Doccuments](https://github.com/N-VD/Projet-3/tree/main/Doc)
+
+Lien vers le journal : [Journal](https://github.com/N-VD/Projet-3/blob/main/Doc/Journal.md)
