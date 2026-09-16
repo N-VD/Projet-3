@@ -36,7 +36,7 @@ Notre application a pour objectif de respecter toutes ces exigences :
 | **2** | Une base de données transactionnelle : elle doit vous permettre de traiter correctement des écritures simultanées. |
 | **3** | L'application s'installe et démarre à l'aide de Docker, sans que j'aie à installer quoi que ce soit d'autre sur ma machine. |
 | **4** | Au moins deux rôles d'utilisateur aux permissions réellement différentes, derrière une authentification. |
-| **5** | Au moins une fonctionnalité temps réel multi-utilisateurs qui a du sens dans le projet. |
+| **5** | Au moins une fonctionnalité temps réel multi-utilisateurs qui a du sens dans le projet. La vidéo en direct et le salon de discutions en direct |
 | **6** | Au moins un point de concurrence réel : deux personnes qui agissent en même temps sur la même ressource, et le résultat reste correct. Par exemple, lorsque deux joueurs veulent rentrer dans une parti, mais qui reste une place, seulement un joueur au hasard sera choisi|
 | **7** | Des tests automatisés exécutés automatiquement à chaque poussée vers le dépôt. |
 | **8** | La version finale est déployée sur un serveur, accessible autrement que depuis vos portables. |
