@@ -1,22 +1,5 @@
 # Route
 
-## Authentification
-
-    accéder a son compte
-        * POST /login
-
-    créer un compte
-
-    * POST /createAcount
-
-    Deconnecter
-    * Get /logOut
-
-## Compte
-
-    modifer le mot passe
-
-    * PATCH /chMdp
 
 ## Compte
 
@@ -52,7 +35,7 @@
 ## Blackjack (en jeux)
 
     Voir les salons de joueur
-    *   GET /salon
+    * GET /salon
 
     rejoin une partie
 
