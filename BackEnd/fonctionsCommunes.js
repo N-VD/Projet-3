@@ -34,4 +34,4 @@ function validerChamps(champs) {
     return true;
 }
 
-module.exports = {authentifier, validerChamps}
+module.exports = {authentifier, validerChamps, jwt, jwt_mdp}
