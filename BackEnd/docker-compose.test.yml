@@ -1,0 +1,12 @@
+services:
+  mongo-test:
+    image: mongo:7
+    container_name: bellevibe-mongo-test
+    restart: "no"
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-test-data:/data/db
+
+volumes:
+  mongo-test-data:
