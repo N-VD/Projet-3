@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT ?? 3000;
 const mongoose = require('mongoose');//ajout
+const cors = require('cors');
 
 
 
@@ -10,6 +11,7 @@ const comptesRouter = require('./Comptes/Comptes');
 
 
 
+app.use(cors());
 app.use(express.json());
 
 // ajout de la connexion
