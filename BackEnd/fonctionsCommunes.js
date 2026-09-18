@@ -15,7 +15,8 @@ const jwt_mdp = "Belle_Vibe_Casino2026"
         // décode le token et le renvoye dans la requête dans user
         const userDecoded = jwt.verify(token, jwt_mdp)
         req.user = userDecoded
-        if (req.user.statut.toLowerCase() != "actif") {
+        //if (req.user?.statut.toLowerCase() != "actif") {//ajout de ?
+        if (req.user?.statut && req.user.statut.toLowerCase() !== "actif") {
             return res.status(403).json({ message: "Accès refusé. Compte employé inactif"})
         }
         next()
