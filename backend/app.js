@@ -2,8 +2,7 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT ?? 3000;
 const mongoose = require('mongoose');//ajout
-const path = require("path");
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const cors = require('cors');
 
 
 
@@ -12,6 +11,7 @@ const portefeuilleRouter = require('./Routes/Portefeuille');
 
 
 
+app.use(cors());
 app.use(express.json());
 
 // ajout de la connexion
