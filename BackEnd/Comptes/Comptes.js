@@ -1,11 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { Compte } = require('../tempDB');
+//const { Compte } = require('../tempDB');
 const {authentifier , validerChamps, jwt, jwt_mdp} = require('../fonctionsCommunes');
+const Compte = require('../models/Compte');//ajout 
 
 const router = express.Router();
 
-router.post('/register', async (req, res) => {
+/* router.post('/register', async (req, res) => {
     const  { nomUtilisateur, motDePasse, date_naissance, email, role, montant, created_at } = req.body;
 
     // Vérifier si le nom d'utilisateur existe déjà
@@ -49,13 +50,67 @@ router.post('/login', async (req, res) => {
     res.json({ token });
 
 });
+*/
+//ajout
+router.post('/register', async (req, res) => {
+    const { nom, password, date_naissance, email, role, montant } = req.body;
 
+    const validation = validerChamps({ nom, password, date_naissance, email, role, montant });
+    if (validation !== true) {
+        return res.status(400).json(validation);
+    }
+
+    // 1. AJOUT DE AWAIT + Utilisation de 'nom' et 'email'
+    const existe = await Compte.findOne({ $or: [{ email }, { nom }] });
+    if (existe) {
+        return res.status(409).json({ message: "Compte ou courriel déjà existant" });
+    }
+
+    // 2. Hachage du mot de passe
+    const hash = await bcrypt.hash(password, 10);
+
+    // 3. AJOUT DE AWAIT + Utilisation des bons noms de champs Mongoose
+    const nouveau = await Compte.create({ 
+        nom, 
+        password: hash, 
+        date_naissance, 
+        email, 
+        role, 
+        montant 
+    });
+
+    res.status(201).json({ message: "Compte créé", id: nouveau._id });
+});
+
+router.post('/login', async (req, res) => {
+    const { nom, password } = req.body;
+    
+    // Recherche par le champ 'nom' du schéma
+    const compte = await Compte.findOne({ nom });
+    if (!compte) {
+        return res.status(404).json({ message: "Nom d'utilisateur ou mot de passe incorrect" });
+    }
+
+    // Comparaison avec le champ 'password' du schéma
+    const estValide = await bcrypt.compare(password, compte.password);
+    if (!estValide) {
+        return res.status(404).json({ message: "Nom d'utilisateur ou mot de passe incorrect" });
+    }
+    
+    const token = jwt.sign(
+        { id: compte._id, nom: compte.nom, role: compte.role }, 
+        jwt_mdp, 
+        { expiresIn: '1h' }
+    ); 
+
+    res.json({ token });
+});
 
 router.delete('/:id', authentifier, async (req, res) => {
     const { id } = req.params;
     
     // Vérifier si l'utilisateur est un administrateur
-    if (req.user.role.toLowerCase() !== 'admin') {
+    if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
         return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas autorisé à supprimer des comptes." });
     }
     
@@ -70,6 +125,7 @@ router.delete('/:id', authentifier, async (req, res) => {
     res.json({ message: "Compte supprimé" });
 
 });
+
 
 
 
