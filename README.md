@@ -9,6 +9,11 @@ BelleVibe Casino est une plateforme de casino en ligne entièrement dédiée au 
 
 Raphaël, Jérôme, Daniel , Kerian, Andy
 
+### Cree l'environement docker
+`DB_USER="admin"
+DB_PASSWORD="bellevibe_casino"
+DB_NAME="myapp"
+`
 ## Liens utiles
 
 Lien vers le backlog : [BackLog](https://github.com/N-VD/Projet-3/blob/main/Doc/02-Backlog.md)
