@@ -7,6 +7,7 @@ const mongoose = require('mongoose');//ajout
 
 const path = require("path");
 const comptesRouter = require('./Comptes/Comptes');
+const creationSalonRouter = require('./Comptes/Salon');
 
 
 
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 
 
 app.use(comptesRouter);
+app.use(creationSalonRouter);
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
