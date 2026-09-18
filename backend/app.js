@@ -6,8 +6,8 @@ const cors = require('cors');
 
 
 
-const path = require("path");
-const comptesRouter = require('./Comptes/Comptes');
+const comptesRouter = require('./Routes/Comptes');
+const portefeuilleRouter = require('./Routes/Portefeuille');
 
 
 
@@ -16,7 +16,11 @@ app.use(express.json());
 
 // ajout de la connexion
 // Connexion Mongoose pour exécution hors Docker (en local)
-const mongoURI = process.env.MONGO_URI || 'mongodb://admin:test@127.0.0.1:27017/projet3_db?authSource=admin';
+const mongoUser = encodeURIComponent(process.env.DB_USER || 'admin');
+const mongoPassword = encodeURIComponent(process.env.DB_PASSWORD || '');
+const mongoDatabase = process.env.DB_NAME || 'myapp';
+const mongoURI = process.env.MONGO_URI
+    || `mongodb://${mongoUser}:${mongoPassword}@127.0.0.1:27017/${mongoDatabase}?authSource=admin`;
 
 mongoose.connect(mongoURI)
     .then(() => console.log("Connecté à MongoDB via Docker avec succès !"))
@@ -31,6 +35,7 @@ app.get("/", (req, res) => {
 
 
 app.use(comptesRouter);
+app.use(portefeuilleRouter);
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
