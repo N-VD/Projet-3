@@ -89,4 +89,84 @@ router.post('/addPlayer', authentifier, async (req, res) => {
     }
 });
 
+// Route pour update la partie en cours
+router.patch('/gameStatus', authentifier, async (req, res) => {
+    const { salonId, status, dealer_hand, players, currentTurnSeat } = req.body;
+    const role = req.user?.role?.toLowerCase();
+
+    // C'est le dealer qui lance le update ce fera probablement avec des signe de main
+    if (role !== 'dealer' && role !== 'admin') {
+        return res.status(403).json({ message: "Accès refusé. Seul un dealer peut mettre à jour la partie." });
+    }
+ 
+    const hasStatus = status !== undefined;
+    const hasDealerHand = dealer_hand !== undefined;
+    const hasPlayers = players !== undefined;
+    const hasCurrentTurnSeat = currentTurnSeat !== undefined;
+
+    // Juste une de des variables plus haut a besoin d'être changer
+    if (!salonId || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
+        || (hasStatus && !['waiting', 'playing', 'finished'].includes(status))
+        || (hasDealerHand && !Array.isArray(dealer_hand))
+        || (hasPlayers && !Array.isArray(players))
+        || (hasCurrentTurnSeat && (!Number.isInteger(currentTurnSeat) || currentTurnSeat < 0))) {
+        return res.status(400).json({
+            message: 'salonId et au moins un champ de partie valide sont obligatoires.'
+        });
+    }
+
+    try {
+        const salon = await Salon.findById(salonId);
+
+        if (!salon) {
+            return res.status(404).json({ message: 'Salon non trouvé.' });
+        }
+
+        // Vérifie que les joueurs a la variable isTurn = true si le currentTurnSeat est le seat du joueurs 
+        const nextPlayers = hasPlayers ? players : salon.players;
+        const nextCurrentTurnSeat = hasCurrentTurnSeat
+            ? currentTurnSeat
+            : salon.currentTurnSeat;
+        const hasValidTurnState = nextPlayers.every((player) => (
+            player.isTurn === (player.seat_index === nextCurrentTurnSeat)
+        ));
+
+        if (!hasValidTurnState) {
+            return res.status(400).json({
+                message: 'isTurn doit être vrai uniquement pour le joueur dont seat_index correspond à currentTurnSeat.'
+            });
+        }
+
+        if (hasDealerHand) {
+            salon.dealer_hand = dealer_hand;
+        }
+        if (hasStatus) {
+            salon.status = status;
+        }
+        if (hasPlayers) {
+            salon.players = players;
+        }
+        if (hasCurrentTurnSeat) {
+            salon.currentTurnSeat = currentTurnSeat;
+        }
+
+        salon.updated_at = new Date();
+        await salon.save();
+
+        return res.status(200).json({
+            message: 'État de la partie mis à jour.',
+            gameStatus: {
+                status: salon.status,
+                dealer_hand: salon.dealer_hand,
+                players: salon.players,
+                currentTurnSeat: salon.currentTurnSeat
+            }
+        });
+    } catch (error) {
+        console.error("ERREUR ROUTE GAMESTATUS :", error);
+        return res.status(500).json({ message: "Erreur lors de la mise à jour de la partie." });
+    }
+
+});
+
 module.exports = router;
