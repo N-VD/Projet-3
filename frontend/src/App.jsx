@@ -1,7 +1,7 @@
 import { Compte } from "./Compte.jsx";
 
 function App() {
-  //return <Compte />;
+  return <Compte />;
 }
 
 export default App;
