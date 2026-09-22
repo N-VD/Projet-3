@@ -1,11 +1,7 @@
+import { Compte } from "./Compte.jsx";
+
 function App() {
-  return (
-    <>
-      <div className="container">
-        <h1 className="title is-1 has-text-centered">REACT App 4D6</h1>
-      </div>
-    </>
-  );
+  //return <Compte />;
 }
 
 export default App;
