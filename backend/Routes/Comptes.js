@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 //const { Compte } = require('../tempDB');
 const {authentifier , validerChamps, jwt, jwt_mdp} = require('../fonctionsCommunes');
-const Compte = require('../models/Compte');//ajout 
+const Compte = require('../models/compte');//ajout 
 
 const router = express.Router();
 
