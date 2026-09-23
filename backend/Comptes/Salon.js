@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { authentifier } = require('../fonctionsCommunes');
 const Salon = require('../models/salon');
 const router = express.Router();
@@ -22,7 +23,7 @@ router.post('/createSalon', authentifier, async (req, res) => {
             currentTurnSeat: 0
         });
 
-        return res.status(201).json({ message: 'Salon créé', salon });
+        return res.status(201).json({ message: 'Salon créé', salon })
     } catch (error) {
         return res.status(500).json({ message: 'Erreur lors de la création du salon' });
     }
@@ -95,9 +96,9 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
     const role = req.user?.role?.toLowerCase();
 
     // C'est le dealer qui lance le update ce fera probablement avec des signe de main
-    if (role !== 'dealer' && role !== 'admin') {
-        return res.status(403).json({ message: "Accès refusé. Seul un dealer peut mettre à jour la partie." });
-    }
+    //if (role !== 'dealer' && role !== 'admin') {
+    //    return res.status(403).json({ message: "Accès refusé. Seul un dealer peut mettre à jour la partie." });
+    //}
  
     const hasStatus = status !== undefined;
     const hasDealerHand = dealer_hand !== undefined;
@@ -106,7 +107,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
 
     // Juste une de des variables plus haut a besoin d'être changer
     if (!salonId || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
-        || (hasStatus && !['waiting', 'playing', 'finished'].includes(status))
+        || (hasStatus && !['waiting', 'playing','finished'].includes(status))
         || (hasDealerHand && !Array.isArray(dealer_hand))
         || (hasPlayers && !Array.isArray(players))
         || (hasCurrentTurnSeat && (!Number.isInteger(currentTurnSeat) || currentTurnSeat < 0))) {
@@ -167,6 +168,40 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
         return res.status(500).json({ message: "Erreur lors de la mise à jour de la partie." });
     }
 
+});
+
+router.delete('/deleteSalon', authentifier, async (req, res) => {
+    const { salonId } = req.body;
+    const role = req.user?.role?.toLowerCase();
+
+    // Seul un dealer a le droit de fermé un salon
+    if (role !== 'dealer' && role !== 'admin') {
+        return res.status(403).json({ message: "Accès refusé. Seul un dealer peut supprimer un salon." });
+    }
+
+    if (!salonId || !mongoose.Types.ObjectId.isValid(salonId)) {
+        return res.status(400).json({ message: 'salonId est obligatoire et doit être valide.' });
+    }
+
+    try {
+        const salon = await Salon.findById(salonId);
+
+        if (!salon) {
+            return res.status(404).json({ message: 'Salon non trouvé.' });
+        }
+
+        // Vérifie le salon est en status finished pour le supprimer
+        if (salon.status !== 'finished') {
+            return res.status(409).json({ message: 'Le salon doit être terminé avant de pouvoir être supprimé.' });
+        }
+
+        await Salon.findByIdAndDelete(salonId);
+
+        return res.status(200).json({ message: 'Salon supprimé.', salon });
+    } catch (error) {
+        console.error('ERREUR ROUTE DELETESALON :', error);
+        return res.status(500).json({ message: 'Erreur lors de la suppression du salon.' });
+    }
 });
 
 module.exports = router;
