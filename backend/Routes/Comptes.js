@@ -126,6 +126,17 @@ router.delete('/deleteCompte', authentifier, async (req, res) => {
 
 });
 
+// Récupérer les informations du compte connecté
+router.get('/me', authentifier, async (req, res) => {
+    const compte = await Compte.findById(req.user.id).select('-password'); // Exclure le mot de passe
+
+    if (!compte) {
+        return res.status(404).json({ message: "Compte non trouvé" });
+    }
+
+    res.json(compte);
+});
+
 
 
 

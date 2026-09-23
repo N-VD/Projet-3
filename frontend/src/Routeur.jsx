@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./Pages/App.jsx";
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
+import Compte from "./Pages/Compte.jsx";
+import Navbar from "./Pages/Navbar.jsx";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -22,11 +24,15 @@ function Routeur() {
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-			<Routes>
-				<Route path="/" element={<App isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
-				<Route path="/register" element={<Register />} />
-				<Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
-			</Routes>
+			<>
+				<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+				<Routes>
+					<Route path="/" element={<App />} />
+					<Route path="/register" element={<Register />} />
+					<Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
+					<Route path="/compte" element={<Compte />} />
+				</Routes>
+			</>
 		</BrowserRouter>
 	);
 }
