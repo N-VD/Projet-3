@@ -106,8 +106,8 @@ router.post('/login', async (req, res) => {
     res.json({ token });
 });
 
-router.delete('/:id', authentifier, async (req, res) => {
-    const { id } = req.params;
+router.delete('/deleteCompte', authentifier, async (req, res) => {
+    const { id } = req.body;
     
     // Vérifier si l'utilisateur est un administrateur
     if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
