@@ -120,8 +120,8 @@ router.post('/login', async (req, res) => {
     res.json({ token: genererToken(compte) });
 });
 
-router.delete('/:id', authentifier, async (req, res) => {
-    const { id } = req.params;
+router.delete('/deleteCompte', authentifier, async (req, res) => {
+    const { id } = req.body;
     
     // Vérifier si l'utilisateur est un administrateur
     if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
@@ -138,6 +138,17 @@ router.delete('/:id', authentifier, async (req, res) => {
     await Compte.findByIdAndDelete(id);
     res.json({ message: "Compte supprimé" });
 
+});
+
+// Récupérer les informations du compte connecté
+router.get('/me', authentifier, async (req, res) => {
+    const compte = await Compte.findById(req.user.id).select('-password'); // Exclure le mot de passe
+
+    if (!compte) {
+        return res.status(404).json({ message: "Compte non trouvé" });
+    }
+
+    res.json(compte);
 });
 
 

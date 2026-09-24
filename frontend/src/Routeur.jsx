@@ -3,8 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import App from "./Pages/App.jsx";
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
+import Compte from "./Pages/Compte.jsx";
+import Navbar from "./Pages/Navbar.jsx";
 import Dashboard from "./Pages/Dashboard.jsx";
-import Blackjack from "./Pages/Blackjack.jsx";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -37,10 +38,6 @@ function Routeur() {
 				<Route
 					path="/dashboard"
 					element={isLoggedIn ? <Dashboard isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
-				/>
-				<Route
-					path="/jeux/blackjack"
-					element={isLoggedIn ? <Blackjack isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
 				/>
 			</Routes>
 		</BrowserRouter>

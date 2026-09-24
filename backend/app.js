@@ -8,6 +8,7 @@ const cors = require('cors');
 
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
+const creationSalonRouter = require('./Comptes/Salon');
 
 
 
@@ -36,6 +37,7 @@ app.get("/", (req, res) => {
 
 app.use(comptesRouter);
 app.use(portefeuilleRouter);
+app.use(creationSalonRouter);
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
