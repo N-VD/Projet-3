@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import App from "./Pages/App.jsx";
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
-import Dashboard from "./Pages/Dashboard.jsx";
+import Compte from "./Pages/Compte.jsx";
+import Navbar from "./Pages/Navbar.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
 
 function isTokenExpired(token) {
@@ -24,23 +25,28 @@ function Routeur() {
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
 			<Routes>
 				<Route path="/" element={<App isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
 				<Route
 					path="/register"
-					element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Register setIsLoggedIn={setIsLoggedIn} />}
+					element={isLoggedIn ? <Navigate to="/" replace /> : <Register setIsLoggedIn={setIsLoggedIn} />}
 				/>
 				<Route
 					path="/login"
 					element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login setIsLoggedIn={setIsLoggedIn} />}
 				/>
 				<Route
-					path="/dashboard"
-					element={isLoggedIn ? <Dashboard isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
+					path="/compte"
+					element={isLoggedIn ? <Compte /> : <Navigate to="/login" replace />}
 				/>
 				<Route
 					path="/jeux/blackjack"
 					element={isLoggedIn ? <Blackjack isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
+				/>
+				<Route
+					path="/dashboard"
+					element={<Navigate to="/" replace />}
 				/>
 			</Routes>
 		</BrowserRouter>

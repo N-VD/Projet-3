@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../Navbar.jsx";
 
-// Catalogue des jeux affichés sur la page d'accueil
 const JEUX = [
 	{
 		id: "blackjack",
@@ -25,8 +23,6 @@ function App({ isLoggedIn, setIsLoggedIn }) {
 
 	return (
 		<div>
-			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} isGuest={isGuest} />
-
 			<section className="hero is-primary is-light is-medium">
 				<div className="hero-body">
 					<div className="container has-text-centered">

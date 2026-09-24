@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../Navbar.jsx";
 import "./Blackjack.css";
 
 const API_URL = "http://localhost:3000";
@@ -217,7 +216,6 @@ function Blackjack({ isLoggedIn, setIsLoggedIn }) {
 
 	return (
 		<div>
-			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
 			<section className="section">
 				<div className="container">
 					<div className="level is-mobile mb-4">
