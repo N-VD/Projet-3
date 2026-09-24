@@ -27,7 +27,7 @@ function Login({ setIsLoggedIn }) {
 
       localStorage.setItem("token", data.token);
       setIsLoggedIn(true);
-      navigate("/dashboard");
+      navigate("/");
     } catch {
       setMessage("Impossible de joindre le serveur. Réessayez plus tard.");
     }

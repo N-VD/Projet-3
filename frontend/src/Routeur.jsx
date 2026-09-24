@@ -5,7 +5,6 @@ import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
 import Compte from "./Pages/Compte.jsx";
 import Navbar from "./Pages/Navbar.jsx";
-import Dashboard from "./Pages/Dashboard.jsx";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -25,19 +24,24 @@ function Routeur() {
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
 			<Routes>
 				<Route path="/" element={<App isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
 				<Route
 					path="/register"
-					element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Register setIsLoggedIn={setIsLoggedIn} />}
+					element={isLoggedIn ? <Navigate to="/" replace /> : <Register setIsLoggedIn={setIsLoggedIn} />}
 				/>
 				<Route
 					path="/login"
 					element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login setIsLoggedIn={setIsLoggedIn} />}
 				/>
 				<Route
+					path="/compte"
+					element={isLoggedIn ? <Compte /> : <Navigate to="/login" replace />}
+				/>
+				<Route
 					path="/dashboard"
-					element={isLoggedIn ? <Dashboard isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
+					element={<Navigate to="/" replace />}
 				/>
 			</Routes>
 		</BrowserRouter>

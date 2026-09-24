@@ -46,7 +46,7 @@ function Register({ setIsLoggedIn }) {
 			// Connexion automatique puis redirection vers le tableau de bord
 			localStorage.setItem("token", data.token);
 			setIsLoggedIn(true);
-			navigate("/dashboard");
+			navigate("/");
 		} catch {
 			setMessage("Impossible de joindre le serveur. Réessayez plus tard.");
 		}

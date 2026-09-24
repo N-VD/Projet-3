@@ -8,7 +8,7 @@ const cors = require('cors');
 
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
-const creationSalonRouter = require('./Comptes/Salon');
+const creationSalonRouter = require('./Routes/Salon');
 
 
 
