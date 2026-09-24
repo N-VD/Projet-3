@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 function Login({ setIsLoggedIn }) {
-  const [nom, setNom] = useState("");
+  const [identifiant, setIdentifiant] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
@@ -12,21 +12,25 @@ function Login({ setIsLoggedIn }) {
     event.preventDefault();
     setMessage("");
 
-    const response = await fetch("http://localhost:3000/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nom, password }),
-    });
-    const data = await response.json();
+    try {
+      const response = await fetch("http://localhost:3000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifiant, password }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.error || data.message || "Erreur lors de la connexion");
-      return;
+      if (!response.ok) {
+        setMessage(data.error || data.message || "Identifiants incorrects");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      setIsLoggedIn(true);
+      navigate("/dashboard");
+    } catch {
+      setMessage("Impossible de joindre le serveur. Réessayez plus tard.");
     }
-
-    localStorage.setItem("token", data.token);
-    setIsLoggedIn(true);
-    navigate("/");
   }
 
   return (
@@ -44,19 +48,21 @@ function Login({ setIsLoggedIn }) {
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="field">
-                  <label className="label" htmlFor="login-name">Nom d'utilisateur</label>
+                  <label className="label" htmlFor="login-name">Nom d'utilisateur ou courriel</label>
                   <div className="control has-icons-left">
-                    <input id="login-name" className="input" type="text" value={nom} onChange={(event) => setNom(event.target.value)} required />
+                    <input id="login-name" className="input" type="text" value={identifiant} onChange={(event) => setIdentifiant(event.target.value)} autoComplete="username" required />
                     <span className="icon is-small is-left"><i className="fas fa-user" /></span>
                   </div>
                 </div>
-                <div className="field">
-                  <label className="label" htmlFor="login-password">Mot de passe</label>
-                  <div className="control has-icons-left has-icons-right">
-                    <input id="login-password" className="input" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} required />
+                <label className="label" htmlFor="login-password">Mot de passe</label>
+                <div className="field has-addons">
+                  <div className="control has-icons-left is-expanded">
+                    <input id="login-password" className="input" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
                     <span className="icon is-small is-left"><i className="fas fa-lock" /></span>
-                    <button className="icon is-small is-right" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label="Afficher le mot de passe">
-                      <i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"} />
+                  </div>
+                  <div className="control">
+                    <button className="button" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label="Afficher le mot de passe">
+                      <span className="icon is-small"><i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"} /></span>
                     </button>
                   </div>
                 </div>

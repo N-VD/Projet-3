@@ -1,42 +1,55 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-function Register() {
+// Mêmes règles que le backend (validerMotDePasse)
+const REGLES_MOT_DE_PASSE = [
+	{ texte: "Au moins 8 caractères", test: (mdp) => mdp.length >= 8 },
+	{ texte: "Au moins un caractère spécial (ex. ! @ # $ %)", test: (mdp) => /[^A-Za-z0-9]/.test(mdp) },
+];
+
+function Register({ setIsLoggedIn }) {
 	const [nom, setNom] = useState("");
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [dateNaissance, setDateNaissance] = useState("");
 	const [email, setEmail] = useState("");
-	const [role, setRole] = useState("player");
-	const [montant, setMontant] = useState(0);
 	const [message, setMessage] = useState("");
-	const [success, setSuccess] = useState(false);
+	const [submitted, setSubmitted] = useState(false);
+	const navigate = useNavigate();
+
+	const reglesNonRespectees = REGLES_MOT_DE_PASSE.filter((regle) => !regle.test(password));
+	const showPasswordErrors = submitted || password.length > 0;
 
 	async function handleSubmit(e) {
 		e.preventDefault();
 		setMessage("");
-		setSuccess(false);
+		setSubmitted(true);
 
-		const res = await fetch("http://localhost:3000/register", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				nom,
-				password,
-				date_naissance: dateNaissance,
-				email,
-				role,
-				montant: Number(montant),
-			}),
-		});
-		const data = await res.json();
-
-		if (!res.ok) {
-			setMessage(data.error || data.message || "Erreur lors de l'inscription");
+		if (reglesNonRespectees.length > 0) {
+			setMessage("Le mot de passe ne respecte pas les règles : " + reglesNonRespectees.map((r) => r.texte.toLowerCase()).join(", ") + ".");
 			return;
 		}
-		setSuccess(true);
-		setMessage("Compte créé avec succès !");
+
+		try {
+			const res = await fetch("http://localhost:3000/register", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ nom, password, date_naissance: dateNaissance, email }),
+			});
+			const data = await res.json();
+
+			if (!res.ok) {
+				setMessage(data.error || data.message || "Erreur lors de l'inscription");
+				return;
+			}
+
+			// Connexion automatique puis redirection vers le tableau de bord
+			localStorage.setItem("token", data.token);
+			setIsLoggedIn(true);
+			navigate("/dashboard");
+		} catch {
+			setMessage("Impossible de joindre le serveur. Réessayez plus tard.");
+		}
 	}
 
 	return (
@@ -56,21 +69,30 @@ function Register() {
 								<div className="field">
 									<label className="label" htmlFor="register-name">Nom d'utilisateur</label>
 									<div className="control has-icons-left">
-										<input id="register-name" className="input" type="text" value={nom} onChange={(e) => setNom(e.target.value)} required />
+										<input id="register-name" className="input" type="text" value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="username" required />
 										<span className="icon is-small is-left"><i className="fas fa-user" /></span>
 									</div>
 								</div>
 								<div className="field">
-									<label className="label" htmlFor="register-email">Email</label>
+									<label className="label" htmlFor="register-email">Courriel</label>
 									<div className="control has-icons-left">
-										<input id="register-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+										<input id="register-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
 										<span className="icon is-small is-left"><i className="fas fa-envelope" /></span>
 									</div>
 								</div>
 								<label className="label" htmlFor="register-password">Mot de passe</label>
-								<div className="field has-addons">
+								<div className="field has-addons mb-1">
 									<div className="control has-icons-left is-expanded">
-										<input id="register-password" className="input" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required />
+										<input
+											id="register-password"
+											className={`input ${showPasswordErrors ? (reglesNonRespectees.length ? "is-danger" : "is-success") : ""}`}
+											type={showPassword ? "text" : "password"}
+											value={password}
+											onChange={(e) => setPassword(e.target.value)}
+											autoComplete="new-password"
+											aria-describedby="register-password-rules"
+											required
+										/>
 										<span className="icon is-small is-left"><i className="fas fa-lock" /></span>
 									</div>
 									<div className="control">
@@ -79,6 +101,18 @@ function Register() {
 										</button>
 									</div>
 								</div>
+								<ul id="register-password-rules" className="mb-3">
+									{REGLES_MOT_DE_PASSE.map((regle) => {
+										const ok = regle.test(password);
+										const couleur = ok ? "has-text-success" : showPasswordErrors ? "has-text-danger" : "has-text-grey";
+										return (
+											<li key={regle.texte} className={`help ${couleur}`}>
+												<span className="icon is-small mr-1"><i className={ok ? "fas fa-check" : "fas fa-times"} /></span>
+												{regle.texte}
+											</li>
+										);
+									})}
+								</ul>
 								<div className="field">
 									<label className="label" htmlFor="register-birthdate">Date de naissance</label>
 									<div className="control has-icons-left">
@@ -86,27 +120,8 @@ function Register() {
 										<span className="icon is-small is-left"><i className="fas fa-calendar" /></span>
 									</div>
 								</div>
-								<div className="field">
-									<label className="label" htmlFor="register-role">Rôle</label>
-									<div className="control has-icons-left">
-										<div className="select is-fullwidth">
-											<select id="register-role" value={role} onChange={(e) => setRole(e.target.value)}>
-												<option value="player">player</option>
-												<option value="admin">admin</option>
-											</select>
-										</div>
-										<span className="icon is-small is-left"><i className="fas fa-user-tag" /></span>
-									</div>
-								</div>
-								<div className="field">
-									<label className="label" htmlFor="register-amount">Montant de départ</label>
-									<div className="control has-icons-left">
-										<input id="register-amount" className="input" type="number" min="0" value={montant} onChange={(e) => setMontant(e.target.value)} />
-										<span className="icon is-small is-left"><i className="fas fa-coins" /></span>
-									</div>
-								</div>
 								<button className="button is-primary is-fullwidth" type="submit">S'inscrire</button>
-								{message && <p className={`mt-3 ${success ? "has-text-success" : "has-text-danger"}`}>{message}</p>}
+								{message && <p className="has-text-danger mt-3" role="alert">{message}</p>}
 							</form>
 						</div>
 					</div>
