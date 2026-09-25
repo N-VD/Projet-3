@@ -30,18 +30,18 @@ services:
     ports:
       - "3000:3000"
     volumes:
-    - ./backend:/app
-    - /app/node_modules
+      - ./backend:/app
+      - /app/node_modules
 
   frontend:
     build: ./frontend
     depends_on:
       - backend
     ports:
-      - "5173:5173" 
+      - "5173:5173"
     volumes:
-    - ./frontend:/app
-    - /app/node_modules
+      - ./frontend:/app
+      - /app/node_modules
 
   mongo-express:
     image: mongo-express:1
