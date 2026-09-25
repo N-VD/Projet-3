@@ -1,0 +1,240 @@
+.bj-table {
+	background: radial-gradient(ellipse at center, #1f7a4a 0%, #13573a 70%, #0e4430 100%);
+	border-radius: 24px;
+	border: 8px solid #6b4423;
+	padding: 2rem 1.5rem;
+	color: #fff;
+}
+
+.bj-table .title,
+.bj-table .subtitle {
+	color: #fff;
+}
+
+.bj-zone {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.bj-mains {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 1.5rem;
+}
+
+.bj-main {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	border-radius: 12px;
+	border: 2px solid transparent;
+}
+
+.bj-main.is-active {
+	border-color: #ffdd57;
+	background: rgba(255, 221, 87, 0.08);
+}
+
+.bj-cartes {
+	display: flex;
+	min-height: 112px;
+}
+
+.bj-carte {
+	position: relative;
+	width: 76px;
+	height: 108px;
+	font-weight: 700;
+	perspective: 800px;
+}
+
+.bj-carte + .bj-carte {
+	margin-left: -28px;
+}
+
+/* Retournement 3D : le verso est visible tant que la carte est cachée */
+.bj-carte-interieur {
+	position: absolute;
+	inset: 0;
+	transform-style: preserve-3d;
+	transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.3, 1) var(--delai-retournement, 0s);
+}
+
+.bj-carte.est-cachee .bj-carte-interieur {
+	transform: rotateY(180deg);
+}
+
+.bj-face {
+	position: absolute;
+	inset: 0;
+	border-radius: 8px;
+	backface-visibility: hidden;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.bj-recto {
+	background: #fff;
+	color: #222;
+}
+
+.bj-recto.bj-rouge {
+	color: #c0152f;
+}
+
+.bj-verso,
+.bj-sabot-carte {
+	background: repeating-linear-gradient(45deg, #3b4cca, #3b4cca 6px, #2d3aa0 6px, #2d3aa0 12px);
+	border: 4px solid #fff;
+}
+
+.bj-verso {
+	transform: rotateY(180deg);
+}
+
+.bj-coin {
+	position: absolute;
+	top: 4px;
+	left: 6px;
+	line-height: 1;
+	text-align: center;
+	font-size: 1rem;
+}
+
+.bj-coin.bj-bas {
+	top: auto;
+	left: auto;
+	bottom: 4px;
+	right: 6px;
+	transform: rotate(180deg);
+}
+
+.bj-centre {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 2rem;
+}
+
+/* Distribution : la carte glisse depuis le sabot (coin supérieur droit) */
+.bj-table {
+	position: relative;
+	overflow: hidden;
+}
+
+.bj-zone-croupier {
+	--depart-x: 360px;
+	--depart-y: -140px;
+}
+
+.bj-zone-joueur {
+	--depart-x: 360px;
+	--depart-y: -380px;
+}
+
+.bj-carte.bj-distribuee {
+	animation: bj-distribution 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) var(--delai, 0s) both;
+}
+
+@keyframes bj-distribution {
+	from {
+		opacity: 0;
+		transform: translate(var(--depart-x), var(--depart-y)) rotate(-25deg) scale(0.8);
+	}
+	30% {
+		opacity: 1;
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.bj-sabot {
+	position: absolute;
+	top: 1.5rem;
+	right: 1.5rem;
+	width: 60px;
+	height: 84px;
+}
+
+.bj-sabot-carte {
+	position: absolute;
+	inset: 0;
+	border-radius: 7px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.bj-sabot-carte:nth-child(2) {
+	transform: translate(-3px, 3px);
+}
+
+.bj-sabot-carte:nth-child(3) {
+	transform: translate(-6px, 6px);
+}
+
+/* Résultats */
+.bj-resultat {
+	animation: bj-apparition-resultat 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.bj-resultat.bj-perte {
+	animation: bj-apparition-resultat 0.35s ease-out both, bj-secousse 0.4s ease-in-out 0.35s;
+}
+
+@keyframes bj-apparition-resultat {
+	from {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes bj-secousse {
+	20%, 60% {
+		transform: translateX(-5px);
+	}
+	40%, 80% {
+		transform: translateX(5px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.bj-carte.bj-distribuee,
+	.bj-resultat,
+	.bj-resultat.bj-perte {
+		animation: none;
+	}
+	.bj-carte-interieur {
+		transition: none;
+	}
+}
+
+@media (max-width: 480px) {
+	.bj-sabot {
+		display: none;
+	}
+	.bj-zone-croupier,
+	.bj-zone-joueur {
+		--depart-x: 160px;
+	}
+	.bj-carte {
+		width: 58px;
+		height: 84px;
+	}
+	.bj-cartes {
+		min-height: 88px;
+	}
+	.bj-centre {
+		font-size: 1.5rem;
+	}
+}

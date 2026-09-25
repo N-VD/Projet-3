@@ -35,4 +35,15 @@ function validerChamps(champs) {
     return true;
 }
 
-module.exports = {authentifier, validerChamps, jwt, jwt_mdp}
+// Règles : au moins 8 caractères, dont au moins un caractère spécial
+function validerMotDePasse(motDePasse) {
+    if (typeof motDePasse !== 'string' || motDePasse.length < 8) {
+        return "Le mot de passe doit contenir au moins 8 caractères.";
+    }
+    if (!/[^A-Za-z0-9]/.test(motDePasse)) {
+        return "Le mot de passe doit contenir au moins un caractère spécial.";
+    }
+    return null;
+}
+
+module.exports = {authentifier, validerChamps, validerMotDePasse, jwt, jwt_mdp}
