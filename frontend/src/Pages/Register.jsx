@@ -7,6 +7,15 @@ const REGLES_MOT_DE_PASSE = [
 	{ texte: "Au moins un caractère spécial (ex. ! @ # $ %)", test: (mdp) => /[^A-Za-z0-9]/.test(mdp) },
 ];
 
+// Même règle que le backend (validerAge)
+function aAuMoins18Ans(dateNaissance) {
+	const naissance = new Date(dateNaissance);
+	if (isNaN(naissance.getTime())) return false;
+	const majorite = new Date(naissance);
+	majorite.setFullYear(naissance.getFullYear() + 18);
+	return majorite <= new Date();
+}
+
 function Register({ setIsLoggedIn }) {
 	const [nom, setNom] = useState("");
 	const [password, setPassword] = useState("");
@@ -27,6 +36,11 @@ function Register({ setIsLoggedIn }) {
 
 		if (reglesNonRespectees.length > 0) {
 			setMessage("Le mot de passe ne respecte pas les règles : " + reglesNonRespectees.map((r) => r.texte.toLowerCase()).join(", ") + ".");
+			return;
+		}
+
+		if (!aAuMoins18Ans(dateNaissance)) {
+			setMessage("Vous devez avoir au moins 18 ans pour vous inscrire.");
 			return;
 		}
 

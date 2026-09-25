@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 //const { Compte } = require('../tempDB');
-const {authentifier , validerChamps, validerMotDePasse, jwt, jwt_mdp} = require('../fonctionsCommunes');
+const {authentifier , validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp} = require('../fonctionsCommunes');
 const Compte = require('../models/compte');//ajout 
 
 const router = express.Router();
@@ -73,6 +73,11 @@ router.post('/register', async (req, res) => {
     const erreurMotDePasse = validerMotDePasse(password);
     if (erreurMotDePasse) {
         return res.status(400).json({ error: erreurMotDePasse });
+    }
+
+    const erreurAge = validerAge(date_naissance);
+    if (erreurAge) {
+        return res.status(400).json({ error: erreurAge });
     }
 
     // Courriel et nom d'utilisateur doivent être uniques
