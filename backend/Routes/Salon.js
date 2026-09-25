@@ -2,7 +2,48 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { authentifier } = require('../fonctionsCommunes');
 const Salon = require('../models/salon');
+const Compte = require('../models/compte');
+const Transaction = require('../models/transaction');
 const router = express.Router();
+
+function valeurMain(cartes = []) {
+    let total = 0;
+    let as = 0;
+    for (const carte of cartes) {
+        total += carte.rang === 'A' ? 11 : ['J', 'Q', 'K'].includes(carte.rang) ? 10 : Number(carte.rang);
+        if (carte.rang === 'A') as++;
+    }
+    while (total > 21 && as > 0) {
+        total -= 10;
+        as--;
+    }
+    return total;
+}
+
+function ajustementJoueur(player, dealerHand) {
+    const totalCroupier = valeurMain(dealerHand);
+    const blackjackCroupier = dealerHand?.length === 2 && totalCroupier === 21;
+    const mains = Array.isArray(player.hands) && player.hands.length > 0
+        ? player.hands
+        : [{ cartes: player.hand, mise: player.bet, naturel: player.status === 'blackjack' }];
+
+    return mains.reduce((totalAjustement, main) => {
+        const cartes = main.cartes || [];
+        const totalJoueur = valeurMain(cartes);
+        const mise = Math.round(Number(main.mise ?? player.bet) * 100) / 100;
+        const blackjackJoueur = Boolean(main.naturel) && cartes.length === 2 && totalJoueur === 21;
+        let ajustement = 0;
+
+        if (!Number.isFinite(mise) || mise <= 0) return totalAjustement;
+        if (totalJoueur > 21 || blackjackCroupier && !blackjackJoueur) ajustement = -mise;
+        else if (blackjackJoueur && blackjackCroupier) ajustement = 0;
+        else if (blackjackJoueur) ajustement = Math.round(mise * 150) / 100;
+        else if (totalCroupier > 21 || totalJoueur > totalCroupier) ajustement = mise;
+        else if (totalJoueur < totalCroupier) ajustement = -mise;
+
+        return Math.round((totalAjustement + ajustement) * 100) / 100;
+    }, 0);
+}
 
 // Routes
 // Routes Pour crée un Salon
@@ -26,6 +67,18 @@ router.post('/createSalon', authentifier, async (req, res) => {
         return res.status(201).json({ message: 'Salon créé', salon })
     } catch (error) {
         return res.status(500).json({ message: 'Erreur lors de la création du salon' });
+    }
+});
+
+router.get('/salons', authentifier, async (req, res) => {
+    try {
+        const salons = await Salon.find({ status: { $in: ['waiting', 'playing'] } })
+            .select('_id status players.id_compte players.seat_index created_at')
+            .sort({ created_at: 1 })
+            .lean();
+        return res.status(200).json({ salons });
+    } catch (error) {
+        return res.status(500).json({ message: 'Erreur lors du chargement des salons.' });
     }
 });
 
@@ -138,24 +191,64 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
             });
         }
 
-        if (hasDealerHand) {
-            salon.dealer_hand = dealer_hand;
-        }
-        if (hasStatus) {
-            salon.status = status;
-        }
-        if (hasPlayers) {
-            salon.players = players;
-        }
-        if (hasCurrentTurnSeat) {
-            salon.currentTurnSeat = currentTurnSeat;
+        const ajustements = [];
+        try {
+            if (hasPlayers) {
+                const mainCroupier = hasDealerHand ? dealer_hand : salon.dealer_hand;
+                for (const player of nextPlayers) {
+                    const ancienJoueur = salon.players.find((ancien) => ancien.seat_index === player.seat_index);
+                    const memeCompte = ancienJoueur?.id_compte?.toString() === player.id_compte?.toString();
+                    if (!memeCompte || ancienJoueur.status === 'finished' || player.status !== 'finished') continue;
+
+                    const ajustement = ajustementJoueur(player, mainCroupier);
+                    if (ajustement === 0) continue;
+
+                    const filtreCompte = { _id: ancienJoueur.id_compte };
+                    if (ajustement < 0) filtreCompte.montant = { $gte: -ajustement };
+                    const compte = await Compte.findOneAndUpdate(
+                        filtreCompte,
+                        { $inc: { montant: ajustement } },
+                        { new: true }
+                    );
+                    if (!compte) {
+                        const erreur = new Error('Solde insuffisant pour enregistrer la perte.');
+                        erreur.code = 'INSUFFICIENT_FUNDS';
+                        throw erreur;
+                    }
+
+                    const entree = { id_compte: ancienJoueur.id_compte, montant: ajustement, transactionId: null };
+                    ajustements.push(entree);
+                    const transaction = await Transaction.create({
+                        id_compte: ancienJoueur.id_compte,
+                        desc: ajustement < 0 ? 'Perte blackjack en salon' : 'Gain blackjack en salon',
+                        montant: ajustement
+                    });
+                    entree.transactionId = transaction._id;
+                }
+            }
+
+            if (hasDealerHand) salon.dealer_hand = dealer_hand;
+            if (hasStatus) salon.status = status;
+            if (hasPlayers) salon.players = players;
+            if (hasCurrentTurnSeat) salon.currentTurnSeat = currentTurnSeat;
+            salon.updated_at = new Date();
+            await salon.save();
+        } catch (error) {
+            for (const entree of ajustements.reverse()) {
+                await Compte.findByIdAndUpdate(entree.id_compte, { $inc: { montant: -entree.montant } });
+                if (entree.transactionId) await Transaction.findByIdAndDelete(entree.transactionId);
+            }
+            if (error.code === 'INSUFFICIENT_FUNDS') {
+                return res.status(400).json({ message: error.message });
+            }
+            throw error;
         }
 
-        salon.updated_at = new Date();
-        await salon.save();
+        const compteActuel = await Compte.findById(req.user.id).select('montant');
 
         return res.status(200).json({
             message: 'État de la partie mis à jour.',
+            solde: compteActuel?.montant ?? null,
             gameStatus: {
                 status: salon.status,
                 dealer_hand: salon.dealer_hand,
