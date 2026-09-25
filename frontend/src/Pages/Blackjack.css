@@ -2,8 +2,39 @@
 	background: radial-gradient(ellipse at center, #1f7a4a 0%, #13573a 70%, #0e4430 100%);
 	border-radius: 24px;
 	border: 8px solid #6b4423;
-	padding: 2rem 1.5rem;
+	padding: 0.75rem 1.25rem 1rem;
 	color: #fff;
+}
+
+/* Toute la table tient dans l'écran : marges réduites autour */
+.bj-page {
+	padding: 0.75rem 1rem;
+}
+
+.bj-entete {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.25rem;
+	padding-right: 70px; /* place pour le sabot */
+}
+
+.bj-retour {
+	color: #fff !important;
+}
+
+.bj-regles {
+	opacity: 0.8;
+}
+
+.bj-milieu {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 2rem;
+	margin: 0.25rem 0;
 }
 
 .bj-table .title,
@@ -15,22 +46,22 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.25rem;
 }
 
 .bj-mains {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	gap: 1.5rem;
+	gap: 0.75rem;
 }
 
 .bj-main {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 0.5rem;
-	padding: 0.75rem;
+	gap: 0.3rem;
+	padding: 0.4rem 0.5rem;
 	border-radius: 12px;
 	border: 2px solid transparent;
 }
@@ -42,13 +73,13 @@
 
 .bj-cartes {
 	display: flex;
-	min-height: 112px;
+	min-height: 100px;
 }
 
 .bj-carte {
 	position: relative;
-	width: 76px;
-	height: 108px;
+	width: 68px;
+	height: 96px;
 	font-weight: 700;
 	perspective: 800px;
 }
@@ -135,7 +166,7 @@
 
 .bj-zone-joueur {
 	--depart-x: 360px;
-	--depart-y: -380px;
+	--depart-y: -260px;
 }
 
 .bj-carte.bj-distribuee {
@@ -208,7 +239,266 @@
 	}
 }
 
+/* Jetons de casino */
+.bj-jeton {
+	--couleur-jeton: #c0152f;
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	border: none;
+	padding: 0;
+	font-weight: 800;
+	font-size: 0.95rem;
+	color: #fff;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+	/* Bord strié typique d'un jeton + anneau intérieur */
+	background:
+		radial-gradient(circle, var(--couleur-jeton) 0 52%, #fff 53% 57%, transparent 58%),
+		repeating-conic-gradient(var(--couleur-jeton) 0 30deg, #fff 30deg 45deg);
+	box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.3);
+	cursor: pointer;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	user-select: none;
+}
+
+.bj-jeton-5 { --couleur-jeton: #c0152f; }
+.bj-jeton-10 { --couleur-jeton: #1f5fbf; }
+.bj-jeton-25 { --couleur-jeton: #1b8a3d; }
+.bj-jeton-100 { --couleur-jeton: #222; }
+
+.bj-plateau-jetons {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+.bj-plateau-jetons .bj-jeton:hover:not(:disabled) {
+	transform: translateY(-3px);
+}
+
+.bj-plateau-jetons .bj-jeton.is-choisi {
+	transform: translateY(-6px);
+	box-shadow: 0 0 0 3px #ffdd57, 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.bj-jeton:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+/* Barre de mise : places (mains) puis jetons et boutons */
+.bj-barre-mise {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.bj-places {
+	display: flex;
+	justify-content: center;
+	align-items: flex-end;
+	flex-wrap: wrap;
+	gap: 1.25rem;
+}
+
+.bj-place {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.4rem 0.6rem 0.9rem;
+	border-radius: 14px;
+	background: rgba(0, 0, 0, 0.12);
+}
+
+.bj-place-titre {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.75rem;
+	font-weight: 700;
+}
+
+.bj-supprimer-place {
+	border: none;
+	background: transparent;
+	color: rgba(255, 255, 255, 0.7);
+	cursor: pointer;
+	padding: 0 0.2rem;
+	font-size: 0.75rem;
+}
+
+.bj-supprimer-place:hover:not(:disabled) {
+	color: #ff6b6b;
+}
+
+.bj-place-side {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.bj-ajouter-place {
+	align-self: center;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.25rem;
+	width: 110px;
+	height: 110px;
+	border-radius: 14px;
+	border: 2px dashed rgba(255, 255, 255, 0.5);
+	background: transparent;
+	color: #fff;
+	font-size: 0.8rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.bj-ajouter-place:hover:not(:disabled) {
+	border-color: #ffdd57;
+	color: #ffdd57;
+}
+
+.bj-commandes {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.75rem 1.5rem;
+}
+
+.bj-astuce {
+	color: rgba(255, 255, 255, 0.7);
+}
+
+/* Cercles de mise tracés sur le tapis */
+.bj-zone-mise {
+	position: relative;
+}
+
+.bj-cercle {
+	position: relative;
+	width: 86px;
+	height: 86px;
+	border-radius: 50%;
+	border: 3px solid #ffdd57;
+	background: rgba(0, 0, 0, 0.12);
+	color: #fff;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.bj-cercle-petit {
+	width: 56px;
+	height: 56px;
+	border: 2px dashed rgba(255, 255, 255, 0.6);
+}
+
+.bj-cercle:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.1);
+	border-color: #fff;
+}
+
+.bj-cercle-nom {
+	position: absolute;
+	top: 7px;
+	left: 0;
+	right: 0;
+	font-size: 0.62rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	opacity: 0.85;
+}
+
+.bj-cercle-petit .bj-cercle-nom {
+	top: 4px;
+	font-size: 0.55rem;
+}
+
+.bj-cercle-montant {
+	position: absolute;
+	bottom: -10px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: #111;
+	border-radius: 999px;
+	padding: 0 7px;
+	font-size: 0.7rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+/* Pile de jetons au centre du cercle */
+.bj-pile {
+	position: absolute;
+	left: 50%;
+	top: 56%;
+	width: 38px;
+	height: 38px;
+	transform: translate(-50%, -50%);
+}
+
+.bj-cercle-petit .bj-pile {
+	width: 28px;
+	height: 28px;
+}
+
+.bj-jeton-empile {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	font-size: 0.68rem;
+	cursor: inherit;
+	transform: translateY(calc(var(--rang) * -3px));
+	animation: bj-pose-jeton 0.2s ease-out both;
+}
+
+.bj-cercle-petit .bj-jeton-empile {
+	font-size: 0.55rem;
+}
+
+@keyframes bj-pose-jeton {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--rang) * -3px - 14px)) scale(1.15);
+	}
+}
+
+/* Petit bouton × pour vider un cercle */
+.bj-retirer {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border: none;
+	background: #111;
+	color: #fff;
+	font-size: 0.8rem;
+	line-height: 20px;
+	padding: 0;
+	cursor: pointer;
+}
+
+.bj-retirer:hover:not(:disabled) {
+	background: #c0152f;
+}
+
 @media (prefers-reduced-motion: reduce) {
+	.bj-jeton-empile {
+		animation: none;
+	}
 	.bj-carte.bj-distribuee,
 	.bj-resultat,
 	.bj-resultat.bj-perte {
@@ -236,5 +526,43 @@
 	}
 	.bj-centre {
 		font-size: 1.5rem;
+	}
+}
+
+/* Écrans peu hauts (portables) : on réduit encore pour garder toute la table visible */
+@media (max-height: 820px) {
+	.bj-carte {
+		width: 58px;
+		height: 82px;
+	}
+	.bj-cartes {
+		min-height: 86px;
+	}
+	.bj-centre {
+		font-size: 1.5rem;
+	}
+	.bj-main .tag.is-medium {
+		font-size: 0.85rem;
+	}
+	.bj-cercle {
+		width: 74px;
+		height: 74px;
+	}
+	.bj-cercle-petit {
+		width: 50px;
+		height: 50px;
+	}
+	.bj-ajouter-place {
+		width: 90px;
+		height: 90px;
+	}
+}
+
+@media (max-width: 480px) {
+	.bj-entete {
+		padding-right: 0;
+	}
+	.bj-regles {
+		display: none;
 	}
 }

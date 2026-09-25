@@ -56,33 +56,70 @@ router.get('/blackjack/partie', authentifier, async (req, res) => {
 
 router.post('/blackjack/miser', authentifier, async (req, res) => {
     const idCompte = req.user.id;
-    const mise = blackjack.arrondir(Number(req.body.mise));
 
-    if (!Number.isFinite(mise) || mise <= 0) {
-        return res.status(400).json({ message: "La mise doit être un nombre supérieur à zéro" });
+    // Une entrée par main jouée; { mise, sideBets } seul reste accepté pour une seule main
+    const demandes = Array.isArray(req.body.places)
+        ? req.body.places
+        : [{ mise: req.body.mise, sideBets: req.body.sideBets }];
+
+    if (demandes.length < 1 || demandes.length > blackjack.NB_PLACES_MAX) {
+        return res.status(400).json({ message: `Vous pouvez jouer de 1 à ${blackjack.NB_PLACES_MAX} mains` });
     }
+
+    const places = [];
+    for (const demande of demandes) {
+        const mise = blackjack.arrondir(Number(demande?.mise));
+        if (!Number.isFinite(mise) || mise <= 0) {
+            return res.status(400).json({ message: "Chaque mise doit être un nombre supérieur à zéro" });
+        }
+
+        // Side bets optionnels : absents ou 0 = pas de side bet
+        const sideBets = {};
+        for (const type of blackjack.SIDE_BETS) {
+            const montant = blackjack.arrondir(Number(demande.sideBets?.[type] ?? 0));
+            if (!Number.isFinite(montant) || montant < 0) {
+                return res.status(400).json({ message: "Les side bets doivent être des nombres positifs" });
+            }
+            if (montant > mise) {
+                return res.status(400).json({ message: "Un side bet ne peut pas dépasser la mise principale de sa main" });
+            }
+            sideBets[type] = montant;
+        }
+        places.push({ mise, sideBets });
+    }
+
+    const somme = (montants) => blackjack.arrondir(montants.reduce((total, m) => total + m, 0));
+    const totalSideBets = somme(places.flatMap((place) => Object.values(place.sideBets)));
+    const totalMise = blackjack.arrondir(somme(places.map((place) => place.mise)) + totalSideBets);
 
     if (await PartieBlackjack.exists({ id_compte: idCompte, statut: 'en_cours' })) {
         return res.status(409).json({ message: "Une main est déjà en cours" });
     }
 
-    const compte = await debiter(idCompte, mise, 'Mise blackjack');
+    const compte = await debiter(idCompte, totalMise, totalSideBets > 0 ? 'Mise blackjack + side bets' : 'Mise blackjack');
     if (!compte) {
-        return res.status(400).json({ message: "La mise ne peut pas dépasser votre solde" });
+        return res.status(400).json({ message: "Le total des mises ne peut pas dépasser votre solde" });
     }
 
     let partie;
     try {
-        partie = await PartieBlackjack.create({ id_compte: idCompte, ...blackjack.distribuer(mise) });
+        partie = await PartieBlackjack.create({ id_compte: idCompte, ...blackjack.distribuer(places) });
     } catch (err) {
-        await crediter(idCompte, mise, 'Remboursement mise blackjack');
+        await crediter(idCompte, totalMise, 'Remboursement mise blackjack');
         if (err.code === 11000) {
             return res.status(409).json({ message: "Une main est déjà en cours" });
         }
         return res.status(500).json({ message: "Erreur lors de la distribution" });
     }
 
-    const solde = await payerSiTerminee(partie, compte.montant);
+    // Les side bets gagnants sont payés immédiatement
+    let solde = compte.montant;
+    const gainSideBets = blackjack.arrondir(partie.sideBets.reduce((somme, sb) => somme + sb.gain, 0));
+    if (gainSideBets > 0) {
+        solde = (await crediter(idCompte, gainSideBets, 'Gain side bets blackjack')).montant;
+    }
+
+    solde = await payerSiTerminee(partie, solde);
     res.status(201).json(reponse(partie, solde));
 });
 

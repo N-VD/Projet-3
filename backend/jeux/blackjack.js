@@ -5,7 +5,8 @@ const crypto = require('crypto');
 const RANGS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const COULEURS = ['pique', 'coeur', 'carreau', 'trefle'];
 const NB_PAQUETS = 6;
-const NB_MAINS_MAX = 4;
+const NB_PLACES_MAX = 3; // mains jouées en même temps (places à la table)
+const NB_MAINS_MAX = 4; // par place, en comptant les splits
 const CROUPIER_RESTE_A = 17;
 
 function creerSabot() {
@@ -54,27 +55,101 @@ function arrondir(montant) {
     return Math.round(montant * 100) / 100;
 }
 
-function nouvelleMain(cartes, mise, issueDuSplit = false) {
-    return { cartes, mise, statut: 'en_cours', issueDuSplit, double: false, resultat: null, gain: 0 };
+function nouvelleMain(cartes, mise, place, issueDuSplit = false) {
+    return { cartes, mise, place, statut: 'en_cours', issueDuSplit, double: false, resultat: null, gain: 0 };
 }
 
-function distribuer(mise) {
-    const sabot = creerSabot();
-    const main = nouvelleMain([], mise);
-    const croupier = [];
-    main.cartes.push(sabot.pop());
-    croupier.push(sabot.pop());
-    main.cartes.push(sabot.pop());
-    croupier.push(sabot.pop());
+// --- Side bets : réglés dès la distribution, indépendamment de la main principale ---
 
-    const partie = { statut: 'en_cours', sabot, croupier, mains: [main], mainActive: 0 };
+const SIDE_BETS = ['pairesParfaites', 'vingtEtUnPlusTrois'];
 
-    // Un blackjack naturel (joueur ou croupier) termine la main immédiatement
-    const joueurBJ = estBlackjackNaturel(main.cartes);
-    if (joueurBJ || estBlackjackNaturel(croupier)) {
-        main.statut = joueurBJ ? 'blackjack' : 'stand';
-        terminer(partie);
+const COULEUR_ROUGE = ['coeur', 'carreau'];
+
+// Paires parfaites : les deux premières cartes du joueur forment une paire
+function evaluerPairesParfaites([a, b]) {
+    if (a.rang !== b.rang) return null;
+    if (a.couleur === b.couleur) return { combinaison: 'Paire parfaite', paiement: 25 };
+    if (COULEUR_ROUGE.includes(a.couleur) === COULEUR_ROUGE.includes(b.couleur)) {
+        return { combinaison: 'Paire de couleur', paiement: 12 };
     }
+    return { combinaison: 'Paire mixte', paiement: 6 };
+}
+
+// L'as peut être bas (A-2-3) ou haut (Q-K-A)
+function estSuite(cartes) {
+    const positions = cartes.map((carte) => RANGS.indexOf(carte.rang) + 1).sort((x, y) => x - y);
+    const consecutives = (liste) => liste[1] === liste[0] + 1 && liste[2] === liste[1] + 1;
+    if (consecutives(positions)) return true;
+    if (positions[0] === 1) return consecutives([...positions.slice(1), 14]);
+    return false;
+}
+
+// 21+3 : les deux premières cartes du joueur + la carte visible du croupier forment une main de poker
+function evaluerVingtEtUnPlusTrois(cartes) {
+    const couleur = cartes.every((carte) => carte.couleur === cartes[0].couleur);
+    const brelan = cartes.every((carte) => carte.rang === cartes[0].rang);
+    const suite = estSuite(cartes);
+    if (brelan && couleur) return { combinaison: 'Brelan assorti', paiement: 100 };
+    if (suite && couleur) return { combinaison: 'Quinte flush', paiement: 40 };
+    if (brelan) return { combinaison: 'Brelan', paiement: 30 };
+    if (suite) return { combinaison: 'Suite', paiement: 10 };
+    if (couleur) return { combinaison: 'Couleur', paiement: 5 };
+    return null;
+}
+
+function reglerSideBets(sideBets, main, croupier) {
+    return SIDE_BETS
+        .filter((type) => sideBets[type] > 0)
+        .map((type) => {
+            const mise = sideBets[type];
+            const issue = type === 'pairesParfaites'
+                ? evaluerPairesParfaites(main.cartes)
+                : evaluerVingtEtUnPlusTrois([...main.cartes, croupier[0]]);
+            return {
+                type,
+                place: main.place,
+                mise,
+                combinaison: issue?.combinaison ?? null,
+                paiement: issue?.paiement ?? 0,
+                // Le gain inclut la mise rendue
+                gain: issue ? arrondir(mise * (issue.paiement + 1)) : 0,
+            };
+        });
+}
+
+// places : [{ mise, sideBets }], une entrée par main jouée (de gauche à droite)
+function distribuer(places) {
+    const sabot = creerSabot();
+    const mains = places.map(({ mise }, place) => nouvelleMain([], mise, place));
+    const croupier = [];
+    // Une carte à chaque place puis au croupier, deux fois
+    for (let tour = 0; tour < 2; tour++) {
+        for (const main of mains) main.cartes.push(sabot.pop());
+        croupier.push(sabot.pop());
+    }
+
+    const partie = {
+        statut: 'en_cours',
+        sabot,
+        croupier,
+        mains,
+        mainActive: 0,
+        sideBets: mains.flatMap((main) => reglerSideBets(places[main.place].sideBets ?? {}, main, croupier)),
+    };
+
+    for (const main of mains) {
+        if (estBlackjackNaturel(main.cartes)) main.statut = 'blackjack';
+    }
+    // Blackjack du croupier : toutes les mains sont réglées immédiatement
+    if (estBlackjackNaturel(croupier)) {
+        for (const main of mains) {
+            if (main.statut === 'en_cours') main.statut = 'stand';
+        }
+        terminer(partie);
+        return partie;
+    }
+    // Saute les mains déjà blackjack; termine si aucune n'est jouable
+    avancer(partie);
     return partie;
 }
 
@@ -86,7 +161,8 @@ function actionsPossibles(partie, solde) {
     if (deuxCartes && solde >= main.mise) {
         actions.push('double');
         const memeValeur = valeurCarte(main.cartes[0].rang) === valeurCarte(main.cartes[1].rang);
-        if (memeValeur && partie.mains.length < NB_MAINS_MAX) actions.push('split');
+        const mainsDeLaPlace = partie.mains.filter((m) => (m.place ?? 0) === (main.place ?? 0)).length;
+        if (memeValeur && mainsDeLaPlace < NB_MAINS_MAX) actions.push('split');
     }
     return actions;
 }
@@ -110,7 +186,7 @@ function jouer(partie, action) {
             break;
         case 'split': {
             const [premiere, seconde] = main.cartes;
-            const autre = nouvelleMain([seconde, partie.sabot.pop()], main.mise, true);
+            const autre = nouvelleMain([seconde, partie.sabot.pop()], main.mise, main.place ?? 0, true);
             main.cartes = [premiere, partie.sabot.pop()];
             main.issueDuSplit = true;
             // Des as séparés ne reçoivent qu'une seule carte chacun
@@ -192,6 +268,7 @@ function vuePartie(partie, solde) {
             cartes: main.cartes,
             total: valeurMain(main.cartes),
             mise: main.mise,
+            place: main.place ?? 0,
             statut: main.statut,
             double: main.double,
             resultat: main.resultat,
@@ -199,7 +276,10 @@ function vuePartie(partie, solde) {
         })),
         mainActive: enCours ? partie.mainActive : null,
         actions: actionsPossibles(partie, solde),
+        sideBets: (partie.sideBets ?? []).map(({ type, place, mise, combinaison, paiement, gain }) => ({
+            type, place: place ?? 0, mise, combinaison, paiement, gain,
+        })),
     };
 }
 
-module.exports = { distribuer, jouer, actionsPossibles, vuePartie, valeurMain, arrondir };
+module.exports = { distribuer, jouer, actionsPossibles, vuePartie, valeurMain, arrondir, SIDE_BETS, NB_PLACES_MAX };

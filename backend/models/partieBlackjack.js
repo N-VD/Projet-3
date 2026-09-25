@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const mainSchema = new mongoose.Schema({
   cartes: { type: Array, default: [] },
   mise: { type: Number, required: true },
+  place: { type: Number, default: 0 }, // place à la table (plusieurs mains jouées en même temps)
   statut: { type: String, default: 'en_cours' }, // en_cours, stand, bust, blackjack
   issueDuSplit: { type: Boolean, default: false },
   double: { type: Boolean, default: false },
@@ -19,6 +20,8 @@ const partieBlackjackSchema = new mongoose.Schema({
   croupier: { type: Array, default: [] },
   mains: [mainSchema],
   mainActive: { type: Number, default: 0 },
+  // Side bets réglés à la distribution : { type, mise, combinaison, paiement, gain }
+  sideBets: { type: Array, default: [] },
   created_at: { type: Date, default: Date.now }
 }, { optimisticConcurrency: true });
 
