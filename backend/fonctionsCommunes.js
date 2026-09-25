@@ -46,4 +46,17 @@ function validerMotDePasse(motDePasse) {
     return null;
 }
 
-module.exports = {authentifier, validerChamps, validerMotDePasse, jwt, jwt_mdp}
+function validerAge(dateNaissance) {
+    const naissance = new Date(dateNaissance);
+    if (isNaN(naissance.getTime())) {
+        return "La date de naissance est invalide.";
+    }
+    const majorite = new Date(naissance);
+    majorite.setFullYear(naissance.getFullYear() + 18);
+    if (majorite > new Date()) {
+        return "Vous devez avoir au moins 18 ans pour vous inscrire.";
+    }
+    return null;
+}
+
+module.exports = {authentifier, validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp}
