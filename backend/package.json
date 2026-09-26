@@ -10,6 +10,10 @@
     "path": "^0.12.7"
   },
   "scripts": {
+    "test": "node --test",
     "start": "node app.js"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.0"
   }
 }
