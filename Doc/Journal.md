@@ -8,7 +8,7 @@ Scéance 4 : Nous nous sommes séparés les taches avec une roue et chacun a com
 
 Scéance 5 : Rencontre courte pour définir un plan qui était de continuer un peu de notre bord puis de continuer la semaine prochaine.
 
-Scéance 6 : 
+Scéance 6 :
 
 	Jérôme et Raph : paufinement du backlog
 	Andy : création des maquettes
@@ -16,3 +16,7 @@ Scéance 6 :
 	Daniel : ajout des routes principales
 
 	Rencontre avec la prof pour validation
+
+Scéance 7 : Répartition des taches pour le sprint 1 + fix sprint et vision
+
+Scéance 8 - 11 : Travail chacun sur notre partie
