@@ -1,0 +1,136 @@
+/* Console du croupier : vidéo à gauche, consigne et commandes à droite, table en dessous */
+.croupier-grille {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+	gap: 0.75rem;
+	align-items: start;
+}
+
+.croupier-video {
+	border-radius: 14px;
+	overflow: hidden;
+	background: #000;
+}
+
+.croupier-colonne {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.croupier-panneau {
+	padding: 0.75rem;
+	border: 1px solid var(--live-bordure);
+	border-radius: 12px;
+	background: var(--live-panneau);
+}
+
+.croupier-titre {
+	margin-bottom: 0.5rem;
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: #b1bad3;
+}
+
+/* Grande consigne lisible de loin */
+.croupier-consigne {
+	padding: 1rem;
+	border-radius: 12px;
+	border: 2px solid var(--live-bordure);
+	background: var(--live-panneau);
+}
+
+.croupier-consigne-haut {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.croupier-instruction {
+	font-size: 1.6rem;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.croupier-zone {
+	display: inline-block;
+	margin-top: 0.75rem;
+	padding: 0.3rem 0.9rem;
+	border-radius: 8px;
+	background: var(--live-accent);
+	color: #1a1a1a;
+	font-size: 1.4rem;
+	font-weight: 800;
+	animation: live-pulsation 1.2s ease-in-out infinite;
+}
+
+.croupier-phase-distribution,
+.croupier-phase-croupier {
+	border-color: var(--live-accent);
+}
+
+.croupier-phase-decisions {
+	border-color: #3b82f6;
+}
+
+.croupier-phase-resultats {
+	border-color: #1fff20;
+}
+
+.croupier-phase-nettoyage {
+	border-color: #ff9f43;
+}
+
+.croupier-rangs {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 0.3rem;
+}
+
+.croupier-couleurs {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0.3rem;
+	margin-top: 0.4rem;
+}
+
+.croupier-couleurs .button {
+	font-size: 1.3rem;
+}
+
+.croupier-couleurs .croupier-rouge {
+	color: #c0152f;
+}
+
+.croupier-journal {
+	max-height: 140px;
+	overflow-y: auto;
+	font-size: 0.85rem;
+}
+
+.croupier-journal li + li {
+	margin-top: 0.25rem;
+	padding-top: 0.25rem;
+	border-top: 1px solid var(--live-bordure);
+}
+
+.croupier-table {
+	margin-top: 0.75rem;
+	border-top: 1px solid var(--live-bordure);
+	border-radius: 14px;
+}
+
+@media (max-width: 1024px) {
+	.croupier-grille {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.croupier-zone {
+		animation: none;
+	}
+}

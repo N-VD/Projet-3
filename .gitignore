@@ -25,3 +25,7 @@ dist-ssr
 
 .git
 .env
+
+# Vision (Python)
+.venv
+__pycache__

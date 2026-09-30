@@ -1,28 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import "./Blackjack.css";
+import { JETONS, SIDE_BETS } from "./blackjackConstantes.js";
 
 const API_URL = "http://localhost:3000";
-const JETONS = [5, 10, 25, 100];
 const SYMBOLES = { pique: "♠", coeur: "♥", carreau: "♦", trefle: "♣" };
 const NOMS_ACTIONS = {
 	hit: { texte: "Tirer", icone: "fas fa-plus" },
 	stand: { texte: "Rester", icone: "fas fa-hand-paper" },
 	double: { texte: "Doubler", icone: "fas fa-angle-double-up" },
 	split: { texte: "Séparer", icone: "fas fa-columns" },
-};
-
-const SIDE_BETS = {
-	pairesParfaites: {
-		nom: "Paires parfaites",
-		court: "PP",
-		paiements: "Paire parfaite 25:1 · De couleur 12:1 · Mixte 6:1",
-	},
-	vingtEtUnPlusTrois: {
-		nom: "21+3",
-		court: "21+3",
-		paiements: "Brelan assorti 100:1 · Quinte flush 40:1 · Brelan 30:1 · Suite 10:1 · Couleur 5:1",
-	},
 };
 
 const NB_PLACES_MAX = 3;
@@ -92,7 +79,7 @@ function planifierAnimations(ancienne, nouvelle, mancheActuelle) {
 	return plan;
 }
 
-function Carte({ carte, delai = null, retournement = null }) {
+export function Carte({ carte, delai = null, retournement = null }) {
 	const symbole = SYMBOLES[carte.couleur];
 	const rouge = carte.couleur === "coeur" || carte.couleur === "carreau";
 	const style = {
@@ -159,7 +146,7 @@ function decomposerEnJetons(montant) {
 
 const PILE_MAX = 6;
 
-function CercleMise({ nom, aide, montant, petit = false, onAjouter, onRetirer, desactive }) {
+export function CercleMise({ nom, aide, montant, petit = false, onAjouter, onRetirer, desactive }) {
 	const pile = decomposerEnJetons(montant).slice(0, PILE_MAX).reverse();
 	return (
 		<div className="bj-zone-mise">

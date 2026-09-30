@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { estCroupier } from "../auth.js";
 
 export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
     const location = useLocation();
@@ -33,6 +34,13 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                 <div className="navbar-end">
                     {isLoggedIn ? (
                         <>
+                            {estCroupier() && location.pathname !== "/croupier" && (
+                                <div className="navbar-item">
+                                    <Link to="/croupier" className="button is-warning">
+                                        Console croupier
+                                    </Link>
+                                </div>
+                            )}
                             {!isComptePage && (
                                 <div className="navbar-item">
                                     <button className="button is-light" onClick={() => window.location.href = "/compte"}>

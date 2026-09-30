@@ -6,6 +6,9 @@ import Login from "./Pages/Login.jsx";
 import Compte from "./Pages/Compte.jsx";
 import Navbar from "./Pages/Navbar.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
+import LiveBlackjack from "./Pages/LiveBlackjack.jsx";
+import Croupier from "./Pages/Croupier.jsx";
+import { estCroupier } from "./auth.js";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -43,6 +46,14 @@ function Routeur() {
 				<Route
 					path="/jeux/blackjack"
 					element={isLoggedIn ? <Blackjack isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
+				/>
+				<Route
+					path="/jeux/live"
+					element={isLoggedIn ? <LiveBlackjack setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
+				/>
+				<Route
+					path="/croupier"
+					element={isLoggedIn && estCroupier() ? <Croupier setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/" replace />}
 				/>
 				<Route
 					path="/dashboard"

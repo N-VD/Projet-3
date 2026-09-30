@@ -1,0 +1,273 @@
+/* Blackjack live : vidéo de la table en haut, cartes reconnues et places en dessous */
+.live-page {
+	--live-fond: #0f212e;
+	--live-panneau: #1a2c38;
+	--live-bordure: #2f4553;
+	--live-accent: #ffdd57;
+	background: var(--live-fond);
+	min-height: calc(100vh - 3.25rem);
+	padding: 0.75rem 1rem 2rem;
+	color: #fff;
+}
+
+.live-entete {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.live-attenue {
+	color: #b1bad3;
+}
+
+.live-pastille {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-right: 0.3rem;
+	border-radius: 50%;
+	background: #ff3b3b;
+	vertical-align: middle;
+	animation: live-pulsation 1.4s ease-in-out infinite;
+}
+
+@keyframes live-pulsation {
+	50% {
+		opacity: 0.3;
+	}
+}
+
+.live-scene {
+	position: relative;
+	border-radius: 14px 14px 0 0;
+	overflow: hidden;
+	background: #000;
+}
+
+.live-video {
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	object-fit: contain;
+	background: #000;
+}
+
+.live-video-absente {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	color: #b1bad3;
+}
+
+.live-bandeau {
+	position: absolute;
+	top: 0.6rem;
+	left: 0.6rem;
+	right: 0.6rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.live-chrono {
+	position: relative;
+	flex: 1;
+	max-width: 260px;
+	height: 22px;
+	border-radius: 11px;
+	background: rgba(0, 0, 0, 0.6);
+	overflow: hidden;
+}
+
+.live-chrono-barre {
+	height: 100%;
+	background: #1fff20;
+	transition: width 0.7s linear;
+}
+
+.live-chrono-barre.is-urgent {
+	background: #ff4d4d;
+}
+
+.live-chrono span {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-shadow: 0 1px 2px #000;
+}
+
+.live-alerte-vision {
+	position: absolute;
+	bottom: 0.6rem;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 0.3rem 0.8rem;
+	border-radius: 8px;
+	background: rgba(255, 77, 77, 0.9);
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.live-table {
+	padding: 0.75rem;
+	border: 1px solid var(--live-bordure);
+	border-top: none;
+	border-radius: 0 0 14px 14px;
+	background: radial-gradient(ellipse at top, #1f5e3f 0%, #14432e 80%);
+}
+
+/* Les cartes arrivent depuis la vidéo, juste au-dessus */
+.live-table .bj-zone-croupier,
+.live-table .bj-zone-joueur {
+	--depart-x: 0px;
+	--depart-y: -90px;
+}
+
+.live-cartes {
+	justify-content: center;
+	min-height: 70px;
+}
+
+.live-places {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+}
+
+.live-place {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25rem;
+	min-width: 0;
+	padding: 0.5rem 0.25rem;
+	border: 2px solid transparent;
+	border-radius: 12px;
+	background: rgba(0, 0, 0, 0.25);
+	text-align: center;
+}
+
+.live-place-libre {
+	justify-content: center;
+	border: 2px dashed rgba(255, 255, 255, 0.2);
+	background: transparent;
+	min-height: 110px;
+}
+
+.live-place.is-moi {
+	border-color: #3b82f6;
+}
+
+.live-place.is-active {
+	border-color: var(--live-accent);
+	background: rgba(255, 221, 87, 0.1);
+}
+
+.live-place-numero strong {
+	color: inherit;
+}
+
+.live-place-numero {
+	font-size: 0.8rem;
+	overflow: hidden;
+	max-width: 100%;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.live-main {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 0.2rem;
+	border-radius: 8px;
+}
+
+.live-place .tag.is-light {
+	color: #222;
+}
+
+.live-main.is-active {
+	outline: 1px solid var(--live-accent);
+}
+
+/* Cartes plus petites aux places pour que cinq joueurs tiennent sur une ligne */
+.live-place .bj-carte,
+.live-place .live-carte-attendue {
+	width: 46px;
+	height: 66px;
+}
+
+.live-place .bj-carte + .bj-carte,
+.live-place .bj-carte + .live-carte-attendue {
+	margin-left: -24px;
+}
+
+.live-place .bj-coin {
+	font-size: 0.75rem;
+	left: 4px;
+}
+
+.live-place .bj-coin.bj-bas {
+	display: none;
+}
+
+.live-place .bj-centre {
+	font-size: 1.3rem;
+}
+
+.live-place .live-cartes {
+	min-height: 66px;
+}
+
+/* Emplacement de la prochaine carte que le croupier doit poser */
+.live-carte-attendue {
+	width: 68px;
+	height: 96px;
+	border: 2px dashed var(--live-accent);
+	border-radius: 8px;
+	animation: live-pulsation 1.2s ease-in-out infinite;
+}
+
+.bj-carte + .live-carte-attendue {
+	margin-left: 6px;
+}
+
+.live-panneau {
+	margin-top: 0.75rem;
+	padding: 0.75rem;
+	border-radius: 12px;
+	background: var(--live-panneau);
+}
+
+@media (max-width: 768px) {
+	.live-places {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 480px) {
+	.live-places {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.live-bandeau .tag:first-child {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.live-pastille,
+	.live-carte-attendue {
+		animation: none;
+	}
+}

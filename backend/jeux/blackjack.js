@@ -282,4 +282,7 @@ function vuePartie(partie, solde) {
     };
 }
 
-module.exports = { distribuer, jouer, actionsPossibles, vuePartie, valeurMain, arrondir, SIDE_BETS, NB_PLACES_MAX };
+module.exports = {
+    distribuer, jouer, actionsPossibles, vuePartie, valeurMain, valeurCarte, estBlackjackNaturel, arrondir,
+    reglerSideBets, SIDE_BETS, NB_PLACES_MAX, NB_MAINS_MAX, CROUPIER_RESTE_A, RANGS, COULEURS,
+};

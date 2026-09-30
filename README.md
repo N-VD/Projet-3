@@ -14,6 +14,11 @@ Raphaël, Jérôme, Daniel , Kerian, Andy
 DB_PASSWORD="bellevibe_casino"
 DB_NAME="myapp"
 `
+## Blackjack live
+
+La table live (`/jeux/live`) utilise un service Python de reconnaissance des cartes : voir [vision/README.md](vision/README.md).
+`docker compose up` le lance en mode démo, avec un croupier simulé.
+
 ## Liens utiles
 
 Lien vers le backlog : [BackLog](https://github.com/N-VD/Projet-3/blob/main/Doc/02-Backlog.md)

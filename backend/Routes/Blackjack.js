@@ -1,32 +1,13 @@
 const express = require('express');
 const { authentifier } = require('../fonctionsCommunes');
 const Compte = require('../models/compte');
-const Transaction = require('../models/transaction');
 const PartieBlackjack = require('../models/partieBlackjack');
 const blackjack = require('../jeux/blackjack');
+const { debiter, crediter } = require('../argent');
 
 const router = express.Router();
 
 const ACTIONS = ['hit', 'stand', 'double', 'split'];
-
-// Retire le montant seulement si le solde est suffisant (opération atomique : le solde ne peut devenir négatif)
-async function debiter(idCompte, montant, desc) {
-    const compte = await Compte.findOneAndUpdate(
-        { _id: idCompte, montant: { $gte: montant } },
-        { $inc: { montant: -montant } },
-        { new: true }
-    );
-    if (compte) {
-        await Transaction.create({ id_compte: idCompte, desc, montant: -montant });
-    }
-    return compte;
-}
-
-async function crediter(idCompte, montant, desc) {
-    const compte = await Compte.findByIdAndUpdate(idCompte, { $inc: { montant } }, { new: true });
-    await Transaction.create({ id_compte: idCompte, desc, montant });
-    return compte;
-}
 
 // Verse les gains quand la main est terminée et retourne le solde à jour
 async function payerSiTerminee(partie, solde) {

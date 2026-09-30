@@ -10,6 +10,8 @@ const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
 const blackjackRouter = require('./Routes/Blackjack');
 const creationSalonRouter = require('./Routes/Salon');
+const liveRouter = require('./Routes/Live');
+const tableLive = require('./jeux/tableLive');
 
 
 
@@ -40,6 +42,10 @@ app.use(comptesRouter);
 app.use(portefeuilleRouter);
 app.use(blackjackRouter);
 app.use(creationSalonRouter);
+app.use(liveRouter);
+
+// Table de blackjack live : reprend la manche sauvegardée et fait avancer les chronos
+tableLive.demarrer().catch((err) => console.error("Erreur au démarrage de la table live :", err));
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);

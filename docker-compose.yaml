@@ -43,6 +43,17 @@ services:
       - ./frontend:/app
       - /app/node_modules
 
+  # Reconnaissance des cartes du blackjack live (mode démo : croupier simulé)
+  vision:
+    build: ./vision
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:3000
+      LIVE_CLE_VISION: ${LIVE_CLE_VISION:-cle-vision-dev}
+    ports:
+      - "8000:8000"
+
   mongo-express:
     image: mongo-express:1
     restart: unless-stopped

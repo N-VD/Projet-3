@@ -10,6 +10,14 @@ const JEUX = [
 		icone: "fas fa-clone",
 		lien: "/jeux/blackjack",
 	},
+	{
+		id: "blackjack-live",
+		nom: "Blackjack Live",
+		resume: "En direct · Vrai croupier",
+		description: "Un vrai croupier distribue de vraies cartes, reconnues en direct par notre IA de vision. Jusqu'à 5 joueurs par table.",
+		icone: "fas fa-video",
+		lien: "/jeux/live",
+	},
 ];
 
 function App({ isLoggedIn, setIsLoggedIn }) {
