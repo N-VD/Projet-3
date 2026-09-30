@@ -383,14 +383,10 @@ function Blackjack({ setIsLoggedIn }) {
 
 	useEffect(() => {
 		const joueursEnAttente = salon?.status === "waiting" && salon.players.some((player) => player.bet > 0);
-		if (!joueursEnAttente) {
-			setCompteRebours(null);
-			return undefined;
-		}
+		if (!joueursEnAttente) return undefined;
 
 		const duree = 10_000;
 		const depart = Date.now();
-		setCompteRebours(10);
 		const intervalle = window.setInterval(() => {
 			setCompteRebours(Math.max(0, Math.ceil((duree - (Date.now() - depart)) / 1000)));
 		}, 250);
