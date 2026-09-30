@@ -12,7 +12,7 @@ const JEUX = [
 	},
 ];
 
-function App({ isLoggedIn, setIsLoggedIn }) {
+function App({ isLoggedIn }) {
 	const [isGuest, setIsGuest] = useState(() => sessionStorage.getItem("guest") === "true");
 	const showWelcome = !isLoggedIn && !isGuest;
 
