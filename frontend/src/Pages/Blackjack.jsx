@@ -93,8 +93,28 @@ function Blackjack({ setIsLoggedIn }) {
 		if (data?.salon) setSalon(normaliserSalon(data.salon));
 	}
 
+	/** Entrée : salon créé par le dealer; sortie : Promise résolue après sa suppression. */
+	async function fermerSalon(salonAfermer) {
+		if (!window.confirm("Voulez-vous fermer ce salon ?")) return;
+		const data = await appeler("/deleteSalon", {
+			method: "DELETE",
+			body: JSON.stringify({ salonId: idSalon(salonAfermer) }),
+		});
+		if (data) await appeler("/salons");
+	}
+
 	/** Entrée : salon choisi; sortie : Promise résolue après la tentative de rejoindre une place aléatoire. */
 	async function rejoindreSalon(salonChoisi) {
+		const joueurExistant = salonChoisi.players.find((player) => player.id_compte === utilisateur.id);
+		if (joueurExistant) {
+			const data = await appeler("/addPlayer", {
+				method: "POST",
+				body: JSON.stringify({ salonId: idSalon(salonChoisi), seat_index: joueurExistant.seat_index }),
+			});
+			if (data?.salon) setSalon(normaliserSalon(data.salon));
+			return;
+		}
+
 		const siegesOccupes = new Set(salonChoisi.players.map((player) => player.seat_index));
 		const siegesLibres = Array.from({ length: 6 }, (_, index) => index)
 			.filter((index) => !siegesOccupes.has(index));
@@ -424,12 +444,16 @@ function Blackjack({ setIsLoggedIn }) {
 							<thead><tr><th>Salon</th><th>État</th><th>Joueurs</th><th>Places libres</th><th /></tr></thead>
 							<tbody>{salons.map((salonDisponible) => {
 								const placesLibres = Math.max(0, 6 - salonDisponible.players.length);
+								const estCreateur = salonDisponible.created_by === utilisateur.id;
 								return <tr key={idSalon(salonDisponible)}>
 									<td>{idSalon(salonDisponible).slice(-6)}</td>
 									<td>{salonDisponible.status === "playing" ? "En cours" : "En attente"}</td>
 									<td>{salonDisponible.players.length} / 6</td>
 									<td>{placesLibres}</td>
-									<td>{!estDealer && <button className="button is-small is-warning" onClick={() => rejoindreSalon(salonDisponible)} disabled={chargement || salonDisponible.status !== "waiting" || placesLibres === 0 || salonDisponible.players.some((player) => player.id_compte === utilisateur.id)}>Choisir ce salon</button>}</td>
+									<td>{estDealer ? estCreateur && <button className="button is-small is-danger" onClick={() => fermerSalon(salonDisponible)} disabled={chargement || salonDisponible.status === "playing"} aria-label={`Fermer le salon ${idSalon(salonDisponible)}`}><span className="icon"><i className="fas fa-times" /></span><span>Fermer</span></button> : (() => {
+										const joueurExistant = salonDisponible.players.some((player) => player.id_compte === utilisateur.id);
+										return <button className="button is-small is-warning" onClick={() => rejoindreSalon(salonDisponible)} disabled={chargement || (!joueurExistant && (salonDisponible.status !== "waiting" || placesLibres === 0))}>{joueurExistant ? "Revenir au salon" : "Choisir ce salon"}</button>;
+									})()}</td>
 								</tr>;
 							})}</tbody>
 						</table></div>

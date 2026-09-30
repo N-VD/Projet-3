@@ -13,6 +13,7 @@ const playerInSalonSchema = new mongoose.Schema({
 }, { _id: false });
 
 const salonSchema = new mongoose.Schema({
+  created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Compte', required: false },
   status: { type: String, default: 'waiting' }, // waiting, playing, finished
   dealer_hand: { type: Array, default: [] },
   deck: { type: Array, default: [] },

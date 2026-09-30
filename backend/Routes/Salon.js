@@ -57,6 +57,7 @@ router.post('/createSalon', authentifier, async (req, res) => {
     try {
         // Aucune main n'existe lors de la création et aucun joueur n'est encore connecté
         const salon = await Salon.create({
+            created_by: req.user.id,
             status: 'waiting',
             dealer_hand: [],
             deck: [],
@@ -72,8 +73,12 @@ router.post('/createSalon', authentifier, async (req, res) => {
 
 router.get('/salons', authentifier, async (req, res) => {
     try {
-        const salons = await Salon.find({ status: { $in: ['waiting', 'playing'] } })
-            .select('_id status players.id_compte players.seat_index created_at')
+        const role = req.user?.role?.toLowerCase();
+        const filtre = role === 'dealer' || role === 'admin'
+            ? { status: { $in: ['waiting', 'playing', 'finished'] } }
+            : { status: { $in: ['waiting', 'playing'] } };
+        const salons = await Salon.find(filtre)
+            .select('_id created_by status players.id_compte players.seat_index created_at')
             .sort({ created_at: 1 })
             .lean();
         return res.status(200).json({ salons });
@@ -105,6 +110,11 @@ router.post('/addPlayer', authentifier, async (req, res) => {
             return res.status(404).json({ message: 'Salon non trouvé.' });
         }
 
+        const joueurExistant = salon.players.find((player) => player.id_compte.toString() === req.user.id.toString());
+        if (joueurExistant) {
+            return res.status(200).json({ message: 'Joueur reconnecté au salon.', salon });
+        }
+
         // Une table peut accueillir au maximum six joueurs
         if (salon.players.length >= 6) {
             return res.status(409).json({ message: 'Ce salon est complet.' });
@@ -113,11 +123,6 @@ router.post('/addPlayer', authentifier, async (req, res) => {
         // Un joueur ne peut pas rejoindre un partie au milieur d'une manche
         if (salon.status !== 'waiting') {
             return res.status(409).json({ message: 'Ce salon n’accepte pas de joueurs pour le moment.' });
-        }
-
-        // Un joueur qui est déja dans le salon ne peut pas rejoindre le salon
-        if (salon.players.some((player) => player.id_compte.toString() === req.user.id)) {
-            return res.status(409).json({ message: 'Vous êtes déjà dans ce salon.' });
         }
 
         // Un joueur ne peut pas rejoinde un siege déja occupé
@@ -283,9 +288,15 @@ router.delete('/deleteSalon', authentifier, async (req, res) => {
             return res.status(404).json({ message: 'Salon non trouvé.' });
         }
 
+        const estAdmin = role === 'admin';
+        const estCreateur = salon.created_by?.toString() === req.user.id.toString();
+        if (!estAdmin && !estCreateur) {
+            return res.status(403).json({ message: 'Vous ne pouvez fermer que les salons que vous avez créés.' });
+        }
+
         // Vérifie le salon est en status finished pour le supprimer
-        if (salon.status !== 'finished') {
-            return res.status(409).json({ message: 'Le salon doit être terminé avant de pouvoir être supprimé.' });
+        if (salon.status === 'playing') {
+            return res.status(409).json({ message: 'Le salon ne peut pas être fermé pendant une partie.' });
         }
 
         await Salon.findByIdAndDelete(salonId);
