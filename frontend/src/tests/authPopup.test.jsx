@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import AuthPopup from '../Pages/AuthPopup';
 
