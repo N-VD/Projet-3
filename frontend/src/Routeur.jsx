@@ -5,6 +5,7 @@ import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
 import Compte from "./Pages/Compte.jsx";
 import Navbar from "./Pages/Navbar.jsx";
+import AuthPopup from "./Pages/AuthPopup.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
 
 function isTokenExpired(token) {
@@ -26,6 +27,7 @@ function Routeur() {
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
 			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+			<AuthPopup isLoggedIn={isLoggedIn} />
 			<Routes>
 				<Route path="/" element={<App isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
 				<Route

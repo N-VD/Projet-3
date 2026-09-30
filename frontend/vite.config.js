@@ -9,4 +9,9 @@ export default defineConfig({
       interval: 500,
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/tests/setup.js',
+    },
 })
