@@ -1,0 +1,26 @@
+# Installation
+
+## Créer le venv et insaller les dépendencies
+
+À la racine du projet, exécuter :
+
+```powershell
+cd "Reconnaissance des cartes"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+## Lancer le projet
+
+```powershell
+python "recognition.py"
+```
+
+---
+
+## Désactiver le venv
+
+```powershell
+deactivate
+```
