@@ -36,7 +36,8 @@ toute la chaîne est testée. Ouvrez ensuite http://localhost:5173/jeux/live.
    `0` pour 10, `J`, `Q`, `K`) puis la couleur (`P` pique, `C` coeur, `K` carreau, `T` trèfle).
    Les rangs et couleurs encore à apprendre sont affichés en haut ; Échap pour quitter.
    Les modèles sont enregistrés dans `modeles/perso`.
-2. **Lancer le service** : `python serveur.py --source camera --camera 0 --fenetre`
+2. **Lancer le service** : double-cliquez sur `camera.bat` (Windows, installe l'environnement au besoin),
+   ou `.venv\Scripts\python serveur.py --source camera --camera 0 --fenetre`
    (ou `--source ecran --ecran x,y,largeur,hauteur` pour lire un flux affiché à l'écran).
 3. **Cadrer la caméra** : la zone du croupier est en haut (42 % de l'image, réglable avec
    `--ligne-croupier`), les 5 places sont des bandes verticales en dessous. Les lignes sont
