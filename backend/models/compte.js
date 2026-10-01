@@ -10,4 +10,4 @@ const compteSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('Compte', compteSchema);
+module.exports = mongoose.models.Compte || mongoose.model('Compte', compteSchema);
