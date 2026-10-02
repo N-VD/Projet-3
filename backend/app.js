@@ -53,7 +53,7 @@ async function initComptesAutomatiques() {
         if (nbComptes === 0) {
             console.log("  création automatique des comptes de démonstration");
 
-            const hashedPassword = await bcrypt.hash('1234', 10);//mot de passe 1234
+            const hashedPassword = await bcrypt.hash('1234578!', 10);//mot de passe 1234
 
             await Compte.insertMany([
                 {
