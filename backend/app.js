@@ -53,12 +53,12 @@ async function initComptesAutomatiques() {
         if (nbComptes === 0) {
             console.log("  création automatique des comptes de démonstration");
 
-            const hashedPassword = await bcrypt.hash('1234578!', 10);//mot de passe 1234
+            const hashedPassword = await bcrypt.hash('12345678!', 10);
 
             await Compte.insertMany([
                 {
                     nom: 'JoueurTest',
-                    email: 'player@bellevibe.com',// email
+                    email: 'player@bellevibe.com',
                     password: hashedPassword,
                     date_naissance: new Date('2000-01-01'),
                     role: 'player',
@@ -66,7 +66,7 @@ async function initComptesAutomatiques() {
                 },
                 {
                     nom: 'CroupierTest',
-                    email: 'dealer@bellevibe.com', //email
+                    email: 'dealer@bellevibe.com',
                     password: hashedPassword,
                     date_naissance: new Date('1995-05-15'),
                     role: 'dealer',
