@@ -20,3 +20,5 @@ Scéance 6 :
 Scéance 7 : Répartition des taches pour le sprint 1 + fix sprint et vision
 
 Scéance 8 - 11 : Travail chacun sur notre partie
+
+Scéance 12 : Rencontre en classe pour déterminer ce qui reste a faire avant la remise, quelques fix
