@@ -23,15 +23,9 @@ require('dotenv').config({ path: envPath });
 const express = require('express');
 const app = express();
 const port = process.env.PORT ?? 3000;
-const mongoose = require('mongoose');//ajout
+const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-
-
-
-const Compte = require('./models/Compte');
-
-
+const initComptesAutomatiques = require('./initComptes');
 
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
@@ -43,45 +37,6 @@ const creationSalonRouter = require('./Routes/Salon');
 app.use(cors());
 app.use(express.json());
 
-
-
-// Fonction d'initialisation automatique des comptes
-async function initComptesAutomatiques() {
-    try {
-        const nbComptes = await Compte.countDocuments();
-
-        if (nbComptes === 0) {
-            console.log("  création automatique des comptes de démonstration");
-
-            const hashedPassword = await bcrypt.hash('12345678!', 10);
-
-            await Compte.insertMany([
-                {
-                    nom: 'JoueurTest',
-                    email: 'player@bellevibe.com',
-                    password: hashedPassword,
-                    date_naissance: new Date('2000-01-01'),
-                    role: 'player',
-                    montant: 1000
-                },
-                {
-                    nom: 'CroupierTest',
-                    email: 'dealer@bellevibe.com',
-                    password: hashedPassword,
-                    date_naissance: new Date('1995-05-15'),
-                    role: 'dealer',
-                    montant: 0  
-                }
-            ]);
-
-            console.log(" Comptes Player et Dealer créés automatiquement !");
-        } else {
-            console.log("ℹ Des comptes existent déjà dans la base de données.");
-        }
-    } catch (error) {
-        console.error("Erreur lors de l'initialisation des comptes :", error);
-    }
-}
 
 // ajout de la connexion
 // Connexion Mongoose pour exécution hors Docker (en local)
