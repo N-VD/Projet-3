@@ -33,7 +33,7 @@ Une fois que les containers sont lancés, l'application est disponible sur http:
 | Player | JoueurTest | player@bellevibe.com | 12345678! ||
 | Dealer | CroupierTest | dealer@bellevibe.com | 12345678!    |
 
-Ces comptes sont
+Ces comptes sont préenregistrés dans la base de données afin de pouvoir faire des tests.
 
 ## Tests
 
