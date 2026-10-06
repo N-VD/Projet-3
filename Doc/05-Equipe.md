@@ -61,5 +61,12 @@ Structure
 
 
 ## Contribution individuelle 
-[Contribution](https://github.com/N-VD/Projet-3/pulls?q=is%3Apr+state%3Aclosed)
+[Contribution](https://github.com/N-VD/Projet-3/issues?q=is%3Aissue+state%3Aclosed)
+| **Développeur** | **Description** |
+|:---|:---|
+| Jérome | A créé l'infrastructure Docker, a mis à jour le journal.md, et a développé l'IA pour reconnaître les cartes. |
+| Raphaël | S'est occupé des tests unitaires et de toutes les requêtes d'ajout et de retrait d'argent dans l'application. |
+| Andy | A géré le système d'authentification et a participé à plusieurs autres tâches sur le projet pour assister les autres développeurs. |
+| Daniel | S'est occupé de la connexion de la base de données avec Docker et a travaillé sur les tests unitaires. |
+| Kerian | S'est occupé du jeu de blackjack dans l'application (connexion à la partie et déroulement). |
 
