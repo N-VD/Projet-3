@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { connectWebSocket, sendWebSocketMessage } from "../services/socket.js";
 import { Link } from "react-router-dom";
 import "./Blackjack.css";
 import {
@@ -13,6 +14,7 @@ import {
 	SIEGE_INACTIF,
 	totalMain,
 } from "./reglesBlackjack/outils.js";
+
 
 /** Entrée : le callback setIsLoggedIn; sortie : le JSX de la page Blackjack. */
 function Blackjack({ setIsLoggedIn }) {
@@ -32,8 +34,29 @@ function Blackjack({ setIsLoggedIn }) {
 	const minuterieAnimation = useRef(null);
 	const [planAnimation, setPlanAnimation] = useState(null);
 	const [enAnimation, setEnAnimation] = useState(false);
+	const [messagesChat, setMessagesChat] = useState([]);
 
 	useEffect(() => () => window.clearTimeout(minuterieAnimation.current), []);
+
+	// 1. Gérer la connexion WebSocket au chargement du composant
+    useEffect(() => {
+        const socket = connectWebSocket((message) => {
+            console.log("Message WebSocket reçu :", message);
+
+            if (message.type === 'chat') {
+                // Ajouter le message au chat en direct
+                setMessagesChat((prev) => [...prev, message]);
+            } else if (message.type === 'state_update') {
+                // Si tu veux mettre à jour l'état de la table en temps réel
+                // setSalon(message.state);
+            }
+        });
+
+        // Nettoyage : fermer la connexion quand on quitte la page Blackjack
+        return () => {
+            if (socket) socket.close();
+        };
+    }, []);
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -131,6 +154,13 @@ function Blackjack({ setIsLoggedIn }) {
 		if (data?.salon) {
 			setSalon(normaliserSalon(data.salon));
 			await appeler("/salons");
+
+			sendWebSocketMessage('join',{
+				code:idSalon(salonChoisi),
+				nickname:utilisateur.nom||"Joueur",
+			});
+
+			
 		}
 	}
 
@@ -232,6 +262,16 @@ function Blackjack({ setIsLoggedIn }) {
 		if (!premier) terminer(etat, cartes, {});
 		else sauvegarder(etat, cartes, {});
 	}
+	function envoyerMessageOuCommande(event) {
+        event.preventDefault();
+        const inputElement = document.getElementById('chatInput');
+        const texte = inputElement.value.trim();
+
+        if (texte) {
+            sendWebSocketMessage('chat', { text: texte });
+            inputElement.value = '';
+        }
+    }
 
 	/** Entrées : état de manche, cartes restantes et résultats; sortie : Promise résolue après règlement et retour à l’attente. */
 	async function terminer(etat, cartesRestantes, resultatsActuels) {
@@ -513,13 +553,46 @@ function Blackjack({ setIsLoggedIn }) {
 						<button className="button is-light is-medium" onClick={() => actionJoueur("stand")} disabled={chargement || enAnimation}><span className="icon"><i className="fas fa-hand-paper" /></span><span>Rester</span></button>
 						{peutDiviser && <button className="button is-light is-medium" onClick={() => actionJoueur("split")} disabled={chargement || enAnimation}><span className="icon"><i className="fas fa-columns" /></span><span>Séparer</span></button>}
 					</div>}
-					{salon.status === "finished" && <p className="has-text-centered mt-5">Manche terminée. Les résultats sont affichés ci-dessus.</p>}
-				</div>}
+					{/*  SECTION CHAT & COMMANDES  */}
+                    <div className="box has-background-dark has-text-white mt-5">
+                        <h3 className="title is-5 has-text-white mb-3">Chat de la table & Commandes</h3>
+                        
+                        <div 
+                            id="chat-messages" 
+                            className="box has-background-black-ter has-text-white p-3 mb-3" 
+                            style={{ height: '100px', overflowY: 'auto' }}
+                        >
+                            {messagesChat.map((msg, index) => (
+                                <p key={index} className="mb-1">
+                                    <strong>{msg.user || 'Anonyme'} :</strong> {msg.text}
+                                </p>
+                            ))}
+                        </div>
 
-				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
-			</div>
-		</section>
-	);
+                        <form onSubmit={envoyerMessageOuCommande} className="field has-addons">
+                            <div className="control is-expanded">
+                                <input 
+                                    id="chatInput" 
+                                    className="input" 
+                                    type="text" 
+                                    placeholder="Écris un message ou !bet 50, !hit, !stand..." 
+                                />
+                            </div>
+                            <div className="control">
+                                <button type="submit" className="button is-warning">
+                                    Envoyer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {salon.status === "finished" && <p className="has-text-centered mt-5">Manche terminée. Les résultats sont affichés ci-dessus.</p>}
+                </div>}
+
+                {message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
+            </div>
+        </section>
+    );
 }
 
 export default Blackjack;

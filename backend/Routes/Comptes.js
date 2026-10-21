@@ -106,18 +106,19 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-    // L'identifiant peut être le nom d'utilisateur ou le courriel
-    const identifiant = req.body.identifiant ?? req.body.nom;
-    const { password } = req.body;
+    // On récupère l'email (ou nom) et le mot de passe envoyés par le formulaire frontend
+    const identifiant = req.body.email ?? req.body.identifiant ?? req.body.nom;
+    const password = req.body.password ?? req.body.motDePasse;
 
     const validation = validerChamps({ identifiant, password });
     if (validation !== true) {
         return res.status(400).json(validation);
     }
 
+    // Recherche dans MongoDB par nom d'utilisateur ou par email
     const compte = await Compte.findOne({ $or: [{ nom: identifiant }, { email: identifiant }] });
 
-    // Message générique : on ne révèle pas si c'est l'identifiant ou le mot de passe qui est fautif
+    // Comparaison avec le champ "password" du schéma Mongoose
     if (!compte || !(await bcrypt.compare(password, compte.password))) {
         return res.status(401).json({ message: MESSAGE_CONNEXION_INVALIDE });
     }
