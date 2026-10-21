@@ -49,6 +49,11 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                     ) : (
                         <>
                             <div className="navbar-item">
+                                <Link to="/spectateur" className="button is-light">
+                                    Spectateur
+                                </Link>
+                            </div>
+                            <div className="navbar-item">
                                 <Link to="/register" className="button is-light">
                                     S'inscrire
                                 </Link>

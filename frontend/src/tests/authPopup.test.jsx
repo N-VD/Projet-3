@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import AuthPopup from '../Pages/AuthPopup';
 
@@ -31,14 +31,27 @@ test("S'affiche correctement lorsque l'utilisateur n'est pas connecté (isLogged
 });
 
 test("Déclenche l'action au clic sur Continuer en tant qu'invité", () => {
+    const setIsGuest = vi.fn();
     render(
       <MemoryRouter>
-        <AuthPopup isLoggedIn={false} />
+        <AuthPopup isLoggedIn={false} isGuest={false} setIsGuest={setIsGuest} />
       </MemoryRouter>
     );
-    
+
     const boutonInvite = screen.getByRole('button', { name: /continuer en tant qu'invité/i });
     expect(boutonInvite).toBeInTheDocument();
-    
+
     fireEvent.click(boutonInvite);
+    expect(setIsGuest).toHaveBeenCalledWith(true);
+    expect(sessionStorage.getItem("guest")).toBe("true");
+});
+
+test("Ne s'affiche pas si l'utilisateur a déjà choisi le mode invité", () => {
+    render(
+      <MemoryRouter>
+        <AuthPopup isLoggedIn={false} isGuest={true} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('heading', { name: /bienvenue sur bellevibe casino/i })).not.toBeInTheDocument();
 });

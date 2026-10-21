@@ -69,3 +69,54 @@ test('DELETE /deleteSalon : rejette un ID MongoDB invalide', () => {
     const isValid = idInvalide.length === 24; 
     assert.equal(isValid, false);
 });
+
+// ── Tests Spectateur ────────────────────────────────────────────────────────
+
+function fauxSalon(status) {
+    return {
+        status,
+        deck: [{ rang: '2' }, { rang: '3' }],
+        dealer_hand: [{ rang: 'K' }, { rang: '7' }],
+        players: [{ id_compte: 'abc123', seat_index: 0, hand: [{ rang: '10' }, { rang: '9' }], bet: 50, status: 'waiting', isTurn: true }],
+        currentTurnSeat: 0
+    };
+}
+
+test('GET /spectateur/salons/:id : retourne 400 pour un ID invalide, sans token', async () => {
+    const res = await request(app).get('/spectateur/salons/abc');
+    assert.equal(res.status, 400);
+    assert.equal(res.body.message, "Identifiant de salon invalide.");
+});
+
+test('vueInvite : ne renvoie ni le deck ni les id_compte', () => {
+    const vue = salonRouter.vueInvite(fauxSalon('playing'));
+    assert.equal('deck' in vue, false);
+    assert.equal('id_compte' in vue.players[0], false);
+});
+
+test('vueInvite : cache la 2e carte du croupier pendant la partie', () => {
+    const vue = salonRouter.vueInvite(fauxSalon('playing'));
+    assert.deepEqual(vue.dealer_hand.cartes, [{ rang: 'K' }, { cachee: true }]);
+    assert.equal(vue.dealer_hand.total, 10);
+});
+
+test('vueInvite : révèle les cartes du croupier quand la partie est finie', () => {
+    const vue = salonRouter.vueInvite(fauxSalon('finished'));
+    assert.deepEqual(vue.dealer_hand.cartes, [{ rang: 'K' }, { rang: '7' }]);
+    assert.equal(vue.dealer_hand.total, 17);
+    assert.equal(vue.currentTurnSeat, null);
+});
+
+test('vueInvite : renvoie les cartes, le total et la mise des joueurs', () => {
+    const joueur = salonRouter.vueInvite(fauxSalon('playing')).players[0];
+    assert.equal(joueur.total, 19);
+    assert.equal(joueur.mise, 50);
+    assert.equal(joueur.seat_index, 0);
+});
+
+test('estJoueurDuSalon : vrai seulement pour un joueur assis', () => {
+    const salon = fauxSalon('playing');
+    assert.equal(salonRouter.estJoueurDuSalon(salon, 'abc123'), true);
+    assert.equal(salonRouter.estJoueurDuSalon(salon, 'zzz999'), false);
+});
+

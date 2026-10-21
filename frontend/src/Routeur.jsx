@@ -7,6 +7,8 @@ import Compte from "./Pages/Compte.jsx";
 import Navbar from "./Pages/Navbar.jsx";
 import AuthPopup from "./Pages/AuthPopup.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
+import Spectateur from "./Pages/Spectateur.jsx";
+import SpectateurTable from "./Pages/SpectateurTable.jsx";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -23,11 +25,12 @@ function Routeur() {
 		}
 		return true;
 	});
+	const [isGuest, setIsGuest] = useState(() => sessionStorage.getItem("guest") === "true");
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
 			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
-			<AuthPopup isLoggedIn={isLoggedIn} />
+			<AuthPopup isLoggedIn={isLoggedIn} isGuest={isGuest} setIsGuest={setIsGuest} />
 			<Routes>
 				<Route path="/" element={<App isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
 				<Route
@@ -49,6 +52,14 @@ function Routeur() {
 				<Route
 					path="/dashboard"
 					element={<Navigate to="/" replace />}
+				/>
+				<Route
+					path="/spectateur"
+					element={<Spectateur />}
+				/>
+				<Route
+					path="/spectateur/:id"
+					element={<SpectateurTable />}
 				/>
 			</Routes>
 		</BrowserRouter>
