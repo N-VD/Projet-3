@@ -193,7 +193,14 @@ function Blackjack({ setIsLoggedIn }) {
 		const players = salon.players.map((player) => player.id_compte === utilisateur.id
 			? { ...player, bet: Number(mise) }
 			: player);
-		await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
+		
+		try {
+			await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
+			setSolde(solde - Number(mise))
+			setMessage("Mise enregistrée avec succès !");
+		} catch (error) {
+			setMessage("Erreur lors de l'enregistrement de la mise.")
+		}
 	}
 
 	/** Entrée : aucune; sortie : aucune valeur; distribue les cartes et sauvegarde la manche. */
@@ -288,6 +295,19 @@ function Blackjack({ setIsLoggedIn }) {
 		if (!main || main.status !== "playing") return;
 
 		if (action === "split") {
+
+			const response = appeler("/blackjack/action", {
+				method: "POST",
+				body: JSON.stringify({ action: "split" }),
+			})
+
+			if (!response.ok) {
+				const data = await response.json();
+				const errorMessage = data.message || "Une erreur est survenue";
+				console.error("Erreur serveur :", errorMessage);
+				return;
+			}	
+
 			if (main.cartes.length !== 2 || main.cartes[0].rang !== main.cartes[1].rang || mains.length >= 4) return;
 			const [premiere, seconde] = main.cartes;
 			const separerAs = premiere.rang === "A";
