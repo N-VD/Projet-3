@@ -23,9 +23,7 @@ function valeurMain(cartes = []) {
 function ajustementJoueur(player, dealerHand) {
     const totalCroupier = valeurMain(dealerHand);
     const blackjackCroupier = dealerHand?.length === 2 && totalCroupier === 21;
-    const mains = Array.isArray(player.hands) && player.hands.length > 0
-        ? player.hands
-        : [{ cartes: player.hand, mise: player.bet, naturel: player.status === 'blackjack' }];
+    const mains = Array.isArray(player.hands) ? player.hands : [];
 
     return mains.reduce((totalAjustement, main) => {
         const cartes = main.cartes || [];
@@ -134,7 +132,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
         salon.players.push({
             id_compte: req.user.id,
             seat_index,
-            hand: [],
+            hands: [],
             bet: 0,
             status: 'waiting',
             isTurn: false

@@ -1,12 +1,16 @@
 import { DUREE_DISTRIBUTION, DUREE_RETOURNEMENT, PAS_DISTRIBUTION } from "./constantes.js";
 
+function cartesPremiereMain(joueur) {
+	return joueur.hands?.[0]?.cartes ?? [];
+}
+
 function mouvementReduit() {
 	return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
 export function planifierAnimations(ancienne, nouvelle) {
 	const plan = {
-		players: nouvelle.players.map((player) => ({ seat: player.seat_index, cartes: player.hand.map(() => null) })),
+		players: nouvelle.players.map((player) => ({ seat: player.seat_index, cartes: cartesPremiereMain(player).map(() => null) })),
 		dealer: nouvelle.dealer_hand.map(() => null),
 		retournement: null,
 		duree: 0,
@@ -23,7 +27,7 @@ export function planifierAnimations(ancienne, nouvelle) {
 	if (!ancienne || (ancienne.status === "waiting" && nouvelle.status !== "waiting")) {
 		for (let index = 0; index < 2; index++) {
 			for (const player of [...nouvelle.players].sort((a, b) => a.seat_index - b.seat_index)) {
-				if (player.hand.length > index) {
+				if (cartesPremiereMain(player).length > index) {
 					distribuer(plan.players.find((entry) => entry.seat === player.seat_index).cartes, index);
 				}
 			}
@@ -34,8 +38,9 @@ export function planifierAnimations(ancienne, nouvelle) {
 	}
 
 	nouvelle.players.forEach((player) => {
-		const anciennesCartes = ancienneParSiege.get(player.seat_index)?.hand ?? [];
-		player.hand.forEach((_, index) => {
+		const cartes = cartesPremiereMain(player);
+		const anciennesCartes = cartesPremiereMain(ancienneParSiege.get(player.seat_index) ?? {});
+		cartes.forEach((_, index) => {
 			if (index >= anciennesCartes.length) {
 				distribuer(plan.players.find((entry) => entry.seat === player.seat_index).cartes, index);
 			}

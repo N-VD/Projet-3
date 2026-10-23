@@ -143,7 +143,6 @@ function Blackjack({ setIsLoggedIn }) {
 			players: etat.players.map((player) => ({
 				id_compte: player.id_compte,
 				seat_index: player.seat_index,
-				hand: player.hand ?? [],
 				hands: player.hands ?? [],
 				activeHand: player.activeHand ?? 0,
 				bet: player.bet ?? 0,
@@ -193,7 +192,7 @@ function Blackjack({ setIsLoggedIn }) {
 		const players = salon.players.map((player) => player.id_compte === utilisateur.id
 			? { ...player, bet: Number(mise) }
 			: player);
-		
+
 		try {
 			await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
 			setSolde(solde - Number(mise))
@@ -212,13 +211,12 @@ function Blackjack({ setIsLoggedIn }) {
 		}
 		const cartes = melangerSabot();
 		const players = salon.players.map((player) => {
-			if (player.bet <= 0) return { ...player, hand: [], hands: [], activeHand: 0, status: "waiting", isTurn: false };
-			const hand = [cartes.pop(), cartes.pop()];
-			const naturel = totalMain(hand) === 21;
+			if (player.bet <= 0) return { ...player, hands: [], activeHand: 0, status: "waiting", isTurn: false };
+			const cartesMain = [cartes.pop(), cartes.pop()];
+			const naturel = totalMain(cartesMain) === 21;
 			return {
 				...player,
-				hand,
-				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				hands: [{ cartes: cartesMain, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
 				activeHand: 0,
 				status: naturel ? "blackjack" : "playing",
 				isTurn: false,
@@ -295,19 +293,6 @@ function Blackjack({ setIsLoggedIn }) {
 		if (!main || main.status !== "playing") return;
 
 		if (action === "split") {
-
-			const response = appeler("/blackjack/action", {
-				method: "POST",
-				body: JSON.stringify({ action: "split" }),
-			})
-
-			if (!response.ok) {
-				const data = await response.json();
-				const errorMessage = data.message || "Une erreur est survenue";
-				console.error("Erreur serveur :", errorMessage);
-				return;
-			}	
-
 			if (main.cartes.length !== 2 || main.cartes[0].rang !== main.cartes[1].rang || mains.length >= 4) return;
 			const [premiere, seconde] = main.cartes;
 			const separerAs = premiere.rang === "A";
@@ -332,7 +317,6 @@ function Blackjack({ setIsLoggedIn }) {
 			main.status = "stand";
 		}
 
-		joueur.hand = mains[0]?.cartes ?? [];
 		joueur.status = mains.some((entry) => entry.status === "playing") ? "playing" : "stand";
 		const autreMain = mains.findIndex((entry, index) => index > activeHand && entry.status === "playing");
 		let prochainJoueur = null;
