@@ -163,7 +163,7 @@ function Blackjack({ setIsLoggedIn }) {
 		const salonMisAJour = { ...salon, ...data.gameStatus, salonId: salon.salonId };
 		const nouveauPlan = planifierAnimations(salon, salonMisAJour);
 		setSalon(salonMisAJour);
-		if (data.solde !== undefined && data.solde !== null) setSolde(data.solde);
+		if (data.gameStatus.status !== "playing" && data.solde !== undefined && data.solde !== null) setSolde(data.solde);
 		setSabot(nextDeck);
 		setResultats(prochainsResultats);
 		window.clearTimeout(minuterieAnimation.current);
@@ -291,9 +291,15 @@ function Blackjack({ setIsLoggedIn }) {
 		const activeHand = joueur.activeHand ?? 0;
 		const main = mains[activeHand];
 		if (!main || main.status !== "playing") return;
+		let miseSupplementaire = 0;
 
 		if (action === "split") {
 			if (main.cartes.length !== 2 || main.cartes[0].rang !== main.cartes[1].rang || mains.length >= 4) return;
+			miseSupplementaire = Number(main.mise ?? joueur.bet);
+			if (solde === null || !Number.isFinite(miseSupplementaire) || miseSupplementaire <= 0 || solde < miseSupplementaire) {
+				setMessage("Solde insuffisant pour égaler la mise lors du split.");
+				return;
+			}
 			const [premiere, seconde] = main.cartes;
 			const separerAs = premiere.rang === "A";
 			const mainGauche = {
@@ -340,7 +346,10 @@ function Blackjack({ setIsLoggedIn }) {
 		players = players.map((player) => ({ ...player, isTurn: player.seat_index === currentTurnSeat }));
 		const etat = { ...salon, players, currentTurnSeat };
 		if (!prochainJoueur) await terminer(etat, cards, resultats);
-		else await sauvegarder(etat, cards, resultats);
+		else {
+			const sauvegardeReussie = await sauvegarder(etat, cards, resultats);
+			if (sauvegardeReussie && action === "split") setSolde(solde - miseSupplementaire);
+		}
 	}
 
 	/** Entrée : aucune; sortie : Promise résolue après la mise à jour du salon et le retour à la liste. */
@@ -417,7 +426,7 @@ function Blackjack({ setIsLoggedIn }) {
 		&& mainActiveJoueur.cartes[0].rang === mainActiveJoueur.cartes[1].rang
 		&& mainsDuJoueur.length < 4
 		&& solde !== null
-		&& solde >= Number(monJoueur.bet),
+		&& solde >= Number(mainActiveJoueur.mise ?? monJoueur.bet),
 	);
 	/** Entrée : montant numérique; sortie : montant formaté en devise. */
 	const formatArgent = (montant) => `${Number(montant).toFixed(2)} $`;
