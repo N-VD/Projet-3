@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 // Logique pure du blackjack (aucun accès à la base de données)
-
+//t
 const RANGS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const COULEURS = ['pique', 'coeur', 'carreau', 'trefle'];
 const NB_PAQUETS = 6;
