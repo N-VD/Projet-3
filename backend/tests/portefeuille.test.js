@@ -38,6 +38,14 @@ test('GET /solde : retourne 401 sans token', async () => {
     assert.equal(res.body.message, "Accès refusé. Token manquant.");
 });
 
+test('GET /transactions : retourne 401 sans token', async () => {
+    const res = await request(app)
+        .get('/transactions');
+
+    assert.equal(res.status, 401);
+    assert.equal(res.body.message, "Accès refusé. Token manquant.");
+});
+
 // ── Tests de Validation du Montant (Champs invalides) ─────────────────────
 
 // Remarque : On envoie un header fictif pour passer le premier check de présence du header,
