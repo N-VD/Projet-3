@@ -41,6 +41,11 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                                 </div>
                             )}
                             <div className="navbar-item">
+                                <Link to="/spectateur" className="button is-light">
+                                    Spectateur
+                                </Link>
+                            </div>
+                            <div className="navbar-item">
                                 <button className="button is-light" onClick={handleLogout}>
                                     Se déconnecter
                                 </button>

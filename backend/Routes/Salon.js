@@ -30,9 +30,49 @@ function vueInvite(salon) {
             mise: player.bet,
             status: player.status,
             isTurn: player.isTurn,
+            mains: mainsDuJoueur(player).map((main) => ({
+                cartes: main.cartes || [],
+                total: valeurMain(main.cartes),
+                mise: main.mise ?? player.bet,
+                // résultat seulement une fois la manche finie (cartes du croupier révélées)
+                resultat: !enCours && salon.dealer_hand.length > 0 ? resultatMain(main, salon.dealer_hand) : null,
+            })),
         })),
         currentTurnSeat: enCours ? salon.currentTurnSeat : null,
     };
+}
+
+// mains d'un joueur : hands s'il a séparé, sinon sa main simple
+function mainsDuJoueur(player) {
+    if (Array.isArray(player.hands) && player.hands.length > 0) return player.hands;
+    if (Array.isArray(player.hand) && player.hand.length > 0) {
+        return [{ cartes: player.hand, mise: player.bet, naturel: player.status === 'blackjack' }];
+    }
+    return [];
+}
+
+// même règles que terminer() dans Blackjack.jsx
+function resultatMain(main, dealerHand) {
+    const totalCroupier = valeurMain(dealerHand);
+    const blackjackCroupier = dealerHand.length === 2 && totalCroupier === 21;
+    const totalJoueur = valeurMain(main.cartes);
+    if (totalJoueur > 21) return 'perdu';
+    if (main.naturel && blackjackCroupier) return 'egalite';
+    if (main.naturel) return 'blackjack';
+    if (blackjackCroupier) return 'perdu';
+    if (totalCroupier > 21 || totalJoueur > totalCroupier) return 'gagne';
+    if (totalJoueur === totalCroupier) return 'egalite';
+    return 'perdu';
+}
+
+//vue spectateur avec un compte : vue invité + nom des joueurs (salon avec players.id_compte populé)
+function vueInviteJoueur(salon) {
+    const vue = vueInvite(salon);
+    vue.players = vue.players.map((player, index) => ({
+        ...player,
+        nom: salon.players[index].id_compte?.nom ?? null,
+    }));
+    return vue;
 }
 
 
@@ -107,6 +147,28 @@ router.get('/spectateur/salons/:id', async (req, res) => {
             return res.status(404).json({ message: "Salon introuvable." });
         }
         return res.status(200).json(vueInvite(salon));
+    } catch (error) {
+        return res.status(500).json({ message: "Erreur lors de la récupération du salon." });
+    }
+});
+
+//Route vision spectateur avec un compte
+router.get('/spectateur/compte/salons/:id', authentifier, async (req, res) => {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+        return res.status(400).json({ message: "Identifiant de salon invalide." });
+    }
+
+    try {
+        const salon = await Salon.findById(id);
+        if (!salon) {
+            return res.status(404).json({ message: "Salon introuvable." });
+        }
+        // calculé avant le populate, car id_compte devient ensuite un objet
+        const estMaTable = estJoueurDuSalon(salon, req.user.id);
+        await salon.populate('players.id_compte', 'nom');
+        return res.status(200).json({ ...vueInviteJoueur(salon), estMaTable });
     } catch (error) {
         return res.status(500).json({ message: "Erreur lors de la récupération du salon." });
     }
@@ -380,4 +442,5 @@ router.delete('/deleteSalon', authentifier, async (req, res) => {
 
 module.exports = router;
 module.exports.vueInvite = vueInvite;
+module.exports.vueInviteJoueur = vueInviteJoueur;
 module.exports.estJoueurDuSalon = estJoueurDuSalon;

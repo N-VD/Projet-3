@@ -60,9 +60,14 @@ function App({ isLoggedIn }) {
 									</div>
 									<footer className="card-footer">
 										{isLoggedIn ? (
-											<Link to={jeu.lien} className="card-footer-item has-text-weight-bold">
-												Jouer
-											</Link>
+											<>
+												<Link to={jeu.lien} className="card-footer-item has-text-weight-bold">
+													Jouer
+												</Link>
+												<Link to="/spectateur" className="card-footer-item">
+													Regarder une partie
+												</Link>
+											</>
 										) : (
 											<>
 												<Link to="/login" className="card-footer-item">

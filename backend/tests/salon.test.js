@@ -120,3 +120,40 @@ test('estJoueurDuSalon : vrai seulement pour un joueur assis', () => {
     assert.equal(salonRouter.estJoueurDuSalon(salon, 'zzz999'), false);
 });
 
+test('GET /spectateur/compte/salons/:id : retourne 401 si aucun token fourni', async () => {
+    const res = await request(app).get('/spectateur/compte/salons/abc');
+    assert.equal(res.status, 401);
+    assert.equal(res.body.message, "Accès refusé. Token manquant.");
+});
+
+test('vueInviteJoueur : ajoute le nom des joueurs sans id_compte ni deck', () => {
+    const salon = fauxSalon('playing');
+    salon.players[0].id_compte = { _id: 'abc123', nom: 'Alice' };
+    const vue = salonRouter.vueInviteJoueur(salon);
+    assert.equal(vue.players[0].nom, 'Alice');
+    assert.equal('id_compte' in vue.players[0], false);
+    assert.equal('deck' in vue, false);
+});
+
+test('vueInviteJoueur : nom à null si le compte n\'existe plus', () => {
+    const salon = fauxSalon('playing');
+    salon.players[0].id_compte = null;
+    assert.equal(salonRouter.vueInviteJoueur(salon).players[0].nom, null);
+});
+
+test('vueInvite : pas de résultat pendant la partie', () => {
+    const vue = salonRouter.vueInvite(fauxSalon('playing'));
+    assert.equal(vue.players[0].mains[0].resultat, null);
+});
+
+test('vueInvite : affiche le résultat une fois la manche finie', () => {
+    // joueur 19 contre croupier 17
+    const vue = salonRouter.vueInvite(fauxSalon('waiting'));
+    assert.equal(vue.players[0].mains[0].resultat, 'gagne');
+});
+
+test('vueInvite : résultat perdu si le joueur dépasse 21', () => {
+    const salon = fauxSalon('finished');
+    salon.players[0].hand = [{ rang: '10' }, { rang: '9' }, { rang: '5' }];
+    assert.equal(salonRouter.vueInvite(salon).players[0].mains[0].resultat, 'perdu');
+});
