@@ -197,6 +197,7 @@ function Blackjack({ setIsLoggedIn }) {
 				seat_index: player.seat_index,
 				hand: player.hand ?? [],
 				hands: player.hands ?? [],
+				resultats: player.resultats ?? [],
 				activeHand: player.activeHand ?? 0,
 				bet: player.bet ?? 0,
 				status: player.status ?? "waiting",
@@ -266,13 +267,14 @@ function Blackjack({ setIsLoggedIn }) {
 		}
 		const cartes = melangerSabot();
 		const players = salon.players.map((player) => {
-			if (player.bet <= 0) return { ...player, hand: [], hands: [], activeHand: 0, status: "waiting", isTurn: false };
+			if (player.bet <= 0) return { ...player, hand: [], hands: [], resultats: [], activeHand: 0, status: "waiting", isTurn: false };
 			const hand = [cartes.pop(), cartes.pop()];
 			const naturel = totalMain(hand) === 21;
 			return {
 				...player,
 				hand,
 				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				resultats: [],
 				activeHand: 0,
 				status: naturel ? "blackjack" : "playing",
 				isTurn: false,
@@ -294,7 +296,7 @@ function Blackjack({ setIsLoggedIn }) {
 		else sauvegarder(etat, cartes, {});
 	}
 
-	/** Entrées : état de manche, cartes restantes et résultats; sortie : Promise résolue après règlement et retour à l’attente. */
+	/** Entrées : état de manche, cartes restantes et résultats; sortie : Promise résolue après l’enregistrement des résultats. */
 	async function terminer(etat, cartesRestantes, resultatsActuels) {
 		const players = etat.players.map((player) => ({ ...player, isTurn: false }));
 		const joueursRestants = players.some((player) => mainsJoueur(player).some((main) => ["playing", "stand", "blackjack"].includes(main.status)));
@@ -322,16 +324,37 @@ function Blackjack({ setIsLoggedIn }) {
 			...etat,
 			status: "finished",
 			dealer_hand: dealerHand,
-			players: players.map((player) => ({ ...player, status: player.bet > 0 ? "finished" : "waiting", isTurn: false })),
+			players: players.map((player) => ({
+				...player,
+				resultats: prochainsResultats[player.seat_index] ?? [],
+				status: player.bet > 0 ? "finished" : "waiting",
+				isTurn: false,
+			})),
 			currentTurnSeat: SIEGE_INACTIF,
 		};
-		if (!await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats)) return;
-		const attenteMises = {
-			...partieTerminee,
+		await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats);
+	}
+
+	/** Entrée : aucune; sortie : Promise résolue après la réinitialisation partagée du salon. */
+	async function nouvelleManche() {
+		if (!salon || salon.status !== "finished") return;
+		const etat = {
+			...salon,
 			status: "waiting",
-			players: partieTerminee.players.map((player) => ({ ...player, bet: 0, status: "waiting", isTurn: false, activeHand: 0 })),
+			dealer_hand: [],
+			currentTurnSeat: SIEGE_INACTIF,
+			players: salon.players.map((player) => ({
+				...player,
+				hand: [],
+				hands: [],
+				resultats: [],
+				activeHand: 0,
+				bet: 0,
+				status: "waiting",
+				isTurn: false,
+			})),
 		};
-		await sauvegarder(attenteMises, cartesRestantes, prochainsResultats);
+		if (await sauvegarder(etat, sabot, {})) setResultats({});
 	}
 
 	/** Entrée : action hit, stand ou split; sortie : Promise résolue après l’action et l’avancement du tour. */
@@ -530,9 +553,11 @@ function Blackjack({ setIsLoggedIn }) {
 					<div className="bj-mains bj-zone-joueur">
 						{salon.players.map((player) => {
 							const mains = mainsJoueur(player);
-							const issues = Array.isArray(resultats[player.seat_index])
-								? resultats[player.seat_index]
-								: resultats[player.seat_index] ? [resultats[player.seat_index]] : [];
+							const issues = Array.isArray(player.resultats) && player.resultats.length > 0
+								? player.resultats
+								: Array.isArray(resultats[player.seat_index])
+									? resultats[player.seat_index]
+									: resultats[player.seat_index] ? [resultats[player.seat_index]] : [];
 
 							// Détermine l'étiquette : Vous vs Nom/Email du Joueur
 							const estMonJoueur = memeIdentifiant(player.id_compte, idUtilisateur);
@@ -624,12 +649,10 @@ function Blackjack({ setIsLoggedIn }) {
 							{/* Bouton de réinitialisation pour lancer une nouvelle manche sans bug de cache */}
 							<button
 								className="button is-primary is-medium"
-								onClick={() => {
-									// Recharge la page proprement pour réinitialiser la table et la connexion WebSocket
-									window.location.reload();
-								}}
+								onClick={nouvelleManche}
+								disabled={chargement}
 							>
-								🔄 Nouvelle Manche
+								 Nouvelle Manche
 							</button>
 						</div>
 					)}

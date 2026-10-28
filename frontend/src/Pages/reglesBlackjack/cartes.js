@@ -68,5 +68,10 @@ export function idSalon(salon) {
 
 export function normaliserSalon(salon) {
 	if (!salon) return null;
-	return { ...salon, salonId: idSalon(salon), players: salon.players ?? [], dealer_hand: salon.dealer_hand ?? [] };
+	return {
+		...salon,
+		salonId: idSalon(salon),
+		players: [...(salon.players ?? [])].sort((a, b) => a.seat_index - b.seat_index),
+		dealer_hand: salon.dealer_hand ?? [],
+	};
 }

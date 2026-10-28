@@ -74,6 +74,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
 
         const joueurExistant = salon.players.find((player) => player.id_compte.toString() === req.user.id.toString());
         if (joueurExistant) {
+            salon.players.sort((a, b) => a.seat_index - b.seat_index);
             return res.status(200).json({ message: 'Joueur reconnecté au salon.', salon });
         }
 
@@ -101,6 +102,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
             status: 'waiting',
             isTurn: false
         });
+        salon.players.sort((a, b) => a.seat_index - b.seat_index);
         salon.updated_at = new Date();
         await salon.save();
 
@@ -148,6 +150,26 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
         const nextCurrentTurnSeat = hasCurrentTurnSeat
             ? currentTurnSeat
             : salon.currentTurnSeat;
+        const siegesVus = new Set();
+        const comptesVus = new Set();
+        const joueursValides = nextPlayers.every((player) => {
+            if (!player || !Number.isInteger(player.seat_index) || player.seat_index < 0
+                || !player.id_compte || siegesVus.has(player.seat_index)
+                || comptesVus.has(player.id_compte.toString())) {
+                return false;
+            }
+            siegesVus.add(player.seat_index);
+            comptesVus.add(player.id_compte.toString());
+            const joueurEnregistre = salon.players.find((joueur) => joueur.seat_index === player.seat_index);
+            return joueurEnregistre?.id_compte?.toString() === player.id_compte.toString();
+        });
+
+        if (!joueursValides) {
+            return res.status(400).json({
+                message: 'Chaque joueur doit conserver son compte et son siège, sans siège dupliqué.'
+            });
+        }
+
         const hasValidTurnState = nextPlayers.every((player) => (
             player.isTurn === (player.seat_index === nextCurrentTurnSeat)
         ));
@@ -235,7 +257,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
 
             if (hasDealerHand) updateData.dealer_hand = dealer_hand;
             if (hasStatus) updateData.status = status;
-            if (hasPlayers) updateData.players = players;
+            if (hasPlayers) updateData.players = [...players].sort((a, b) => a.seat_index - b.seat_index);
             if (hasCurrentTurnSeat) updateData.currentTurnSeat = currentTurnSeat;
 
             // 2. On applique la mise à jour atomique en base de données
@@ -270,7 +292,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
             gameStatus: {
                 status: salonFinal.status,
                 dealer_hand: salonFinal.dealer_hand,
-                players: salonFinal.players,
+                players: [...salonFinal.players].sort((a, b) => a.seat_index - b.seat_index),
                 currentTurnSeat: salonFinal.currentTurnSeat
             }
         });
