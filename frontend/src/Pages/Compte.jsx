@@ -2,6 +2,30 @@ import { useEffect, useState } from "react";
 
 const API_URL = "http://localhost:3000";
 
+// Fonction pour formater la date d'une transaction, purement utile pour l'affichage, ne modifie pas la date originale
+function formaterDateTransaction(valeur) {
+  const date = new Date(valeur);
+  const annee = date.getFullYear();
+  const mois = String(date.getMonth() + 1).padStart(2, "0");
+  const jour = String(date.getDate()).padStart(2, "0");
+  const heure = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${annee}-${mois}-${jour}, ${heure}h${minutes}`;
+}
+
+// Fonction pour récupérer l'historique des transactions
+async function recupererTransactions(token) {
+  const response = await fetch(`${API_URL}/transactions`, {
+    headers: { Authorization: "Bearer " + token },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Impossible de charger l'historique des transactions.");
+  }
+  return data.transactions;
+}
+
 export default function Compte() {
 
   // Déclaration des états pour le solde, le nom de l'utilisateur et les messages d'erreur
@@ -17,6 +41,7 @@ export default function Compte() {
   const [afficherAjout, setAfficherAjout] = useState(false);
   const [montantRetrait, setMontantRetrait] = useState("");
   const [afficherRetrait, setAfficherRetrait] = useState(false);
+  const [transactions, setTransactions] = useState([]);
   const token = localStorage.getItem("token");
 
   // Fonction pour ajouter de l'argent au compte
@@ -38,6 +63,11 @@ export default function Compte() {
       if (!response.ok) throw new Error(data.message || "Impossible d'ajouter de l'argent.");
       setSolde(data.compte.montant);
       setMessage("");
+      try {
+        setTransactions(await recupererTransactions(token));
+      } catch (error) {
+        setMessage(error.message);
+      }
       return true;
     } catch (error) {
       setMessage(error.message);
@@ -64,6 +94,11 @@ export default function Compte() {
       if (!response.ok) throw new Error(data.message || "Impossible de retirer de l'argent.");
       setSolde(data.compte.montant);
       setMessage("");
+      try {
+        setTransactions(await recupererTransactions(token));
+      } catch (error) {
+        setMessage(error.message);
+      }
       return true;
     } catch (error) {
       setMessage(error.message);
@@ -97,6 +132,7 @@ export default function Compte() {
     }
   };
 
+  // Fonction pour modifier le mot de passe de l'utilisateur
   const modifierMotDePasse = async () => {
     if (!token) {
       setMessage("Vous devez être connecté pour effectuer cette action.");
@@ -146,6 +182,10 @@ export default function Compte() {
         setNom(data.nom);
       })
       .catch((error) => setMessage(error.message));
+
+    recupererTransactions(token)
+      .then(setTransactions)
+      .catch((error) => setMessage(error.message));
   }, [token]);
 
 
@@ -181,6 +221,7 @@ export default function Compte() {
     }
   };
 
+  // Fonction pour valider le nom d'utilisateur
   const validerNomUtilisateur = async (event) => {
     event.preventDefault();
     const nomNettoye = nouveauNom.trim();
@@ -196,6 +237,7 @@ export default function Compte() {
     }
   };
 
+  // Fonction pour valider mot de passe
   const validerMotDePasse = async (event) => {
     event.preventDefault();
 
@@ -205,6 +247,15 @@ export default function Compte() {
       setAfficherModificationMotDePasse(false);
     }
   };
+
+  // Fonction pour ouvrir le formulaire de modification du nom d'utilisateur ou du mot de passe
+  const ouvrirFormulaire = (formulaire) => {
+    setAfficherModificationNom(formulaire === "nom");
+    setAfficherModificationMotDePasse(formulaire === "motDePasse");
+    setAfficherAjout(formulaire === "ajout");
+    setAfficherRetrait(formulaire === "retrait");
+  };
+
   // Rendu du composant
   return (
     <section className="section is-flex is-flex-direction-column is-align-items-center has-text-centered">
@@ -214,6 +265,127 @@ export default function Compte() {
         style={{ "4rem" : "0", width: "100%" }}
       >
         <div style={{ width: "min(900px, 90vw)" }}>
+          <div
+            className={`is-flex is-justify-content-center is-align-items-center is-flex-wrap-wrap ${
+              afficherModificationNom || afficherModificationMotDePasse ? "mb-0" : "mb-6"
+            }`}
+            style={{ width: "100%", gap: "0.75rem" }}
+          >
+            {!afficherModificationNom && (
+              <button
+                className="button is-primary"
+                type="button"
+                onClick={() => {
+                  setNouveauNom(nom);
+                  ouvrirFormulaire("nom");
+                  setMessage("");
+                }}
+              >
+                Modifier le nom d'utilisateur
+              </button>
+            )}
+            {!afficherModificationMotDePasse && (
+              <button
+                className="button is-primary"
+                type="button"
+                onClick={() => {
+                  ouvrirFormulaire("motDePasse");
+                  setMessage("");
+                }}
+              >
+                Modifier le mot de passe
+              </button>
+            )}
+          </div>
+          {afficherModificationNom ? (
+            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
+              <form onSubmit={validerNomUtilisateur}>
+                <h2 className="title is-4">Modifier le nom d'utilisateur</h2>
+                <div className="field">
+                  <label className="label" htmlFor="nouveau-nom">Nouveau nom d'utilisateur</label>
+                  <div className="control">
+                    <input
+                      id="nouveau-nom"
+                      className="input"
+                      type="text"
+                      value={nouveauNom}
+                      onChange={(event) => setNouveauNom(event.target.value)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="buttons is-centered mb-0">
+                  <button className="button is-primary" type="submit">Valider</button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setAfficherModificationNom(false);
+                      setNouveauNom("");
+                      setMessage("");
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
+          {afficherModificationMotDePasse ? (
+            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
+              <form onSubmit={validerMotDePasse}>
+                <h2 className="title is-4">Modifier le mot de passe</h2>
+                <div className="field">
+                  <label className="label" htmlFor="mot-de-passe-actuel">Mot de passe actuel</label>
+                  <div className="control">
+                    <input
+                      id="mot-de-passe-actuel"
+                      className="input"
+                      type="password"
+                      autoComplete="current-password"
+                      value={motDePasseActuel}
+                      onChange={(event) => setMotDePasseActuel(event.target.value)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="field">
+                  <label className="label" htmlFor="nouveau-mot-de-passe">Nouveau mot de passe</label>
+                  <div className="control">
+                    <input
+                      id="nouveau-mot-de-passe"
+                      className="input"
+                      type="password"
+                      autoComplete="new-password"
+                      value={nouveauMotDePasse}
+                      onChange={(event) => setNouveauMotDePasse(event.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="buttons is-centered mb-0">
+                  <button className="button is-primary" type="submit">Valider</button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setAfficherModificationMotDePasse(false);
+                      setMotDePasseActuel("");
+                      setNouveauMotDePasse("");
+                      setMessage("");
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
+          {!afficherAjout && !afficherRetrait && (
+            <h1 className="title is-2 mb-5">Votre solde</h1>
+          )}
           <div className="box" style={{ width: "min(520px, 90vw)", margin: "0 auto" }}>
             {afficherAjout ? (
               <form onSubmit={validerAjout}>
@@ -283,7 +455,6 @@ export default function Compte() {
               </form>
             ) : (
               <>
-                <h2 className="title is-4">Votre solde</h2>
                 <p className="title is-3">
                   {solde === null ? "--" : `${Number(solde).toFixed(2)} $`}
                 </p>
@@ -298,136 +469,48 @@ export default function Compte() {
             <button
               className="button is-primary"
               type="button"
-              onClick={() => {
-                setAfficherAjout(true);
-                setAfficherRetrait(false);
-              }}
+              onClick={() => ouvrirFormulaire("ajout")}
             >
               Ajouter de l'argent
             </button>
             <button
               className="button is-danger"
               type="button"
-              onClick={() => {
-                setAfficherRetrait(true);
-                setAfficherAjout(false);
-              }}
+              onClick={() => ouvrirFormulaire("retrait")}
             >
               Retirer de l'argent
             </button>
-            {!afficherModificationNom && (
-              <button
-                className="button is-primary"
-                type="button"
-                onClick={() => {
-                  setNouveauNom(nom);
-                  setAfficherModificationNom(true);
-                  setMessage("");
-                }}
-              >
-                Modifier le nom d'utilisateur
-              </button>
-            )}
-            {!afficherModificationMotDePasse && (
-              <button
-                className="button is-primary"
-                type="button"
-                onClick={() => {
-                  setAfficherModificationMotDePasse(true);
-                  setAfficherModificationNom(false);
-                  setMessage("");
-                }}
-              >
-                Modifier le mot de passe
-              </button>
+          </div>
+          <h1 className="title is-2 mt-6 mb-5">Historique des transactions</h1>
+          <div className="box mt-5" style={{ width: "100%" }}>
+            {transactions.length === 0 ? (
+              <p>Aucune transaction pour le moment.</p>
+            ) : (
+              <div className="table-container">
+                <table className="table is-fullwidth is-striped">
+                  <thead>
+                    <tr>
+                      <th className="has-text-left">Date</th>
+                      <th className="has-text-right">Montant</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((transaction) => (
+                      <tr key={transaction._id}>
+                        <td className="has-text-left">
+                          {formaterDateTransaction(transaction.created_at)}
+                        </td>
+                        <td className={`has-text-right ${transaction.montant > 0 ? "has-text-success" : "has-text-danger"}`}>
+                          {transaction.montant > 0 ? "+" : ""}
+                          {Number(transaction.montant).toFixed(2)} $
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-          {afficherModificationNom ? (
-            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto 0" }}>
-              <form onSubmit={validerNomUtilisateur}>
-                <h2 className="title is-4">Modifier le nom d'utilisateur</h2>
-                <div className="field">
-                  <label className="label" htmlFor="nouveau-nom">Nouveau nom d'utilisateur</label>
-                  <div className="control">
-                    <input
-                      id="nouveau-nom"
-                      className="input"
-                      type="text"
-                      value={nouveauNom}
-                      onChange={(event) => setNouveauNom(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-primary" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherModificationNom(false);
-                      setNouveauNom("");
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : null}
-          {afficherModificationMotDePasse ? (
-            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto 0" }}>
-              <form onSubmit={validerMotDePasse}>
-                <h2 className="title is-4">Modifier le mot de passe</h2>
-                <div className="field">
-                  <label className="label" htmlFor="mot-de-passe-actuel">Mot de passe actuel</label>
-                  <div className="control">
-                    <input
-                      id="mot-de-passe-actuel"
-                      className="input"
-                      type="password"
-                      autoComplete="current-password"
-                      value={motDePasseActuel}
-                      onChange={(event) => setMotDePasseActuel(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="field">
-                  <label className="label" htmlFor="nouveau-mot-de-passe">Nouveau mot de passe</label>
-                  <div className="control">
-                    <input
-                      id="nouveau-mot-de-passe"
-                      className="input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={nouveauMotDePasse}
-                      onChange={(event) => setNouveauMotDePasse(event.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-primary" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherModificationMotDePasse(false);
-                      setMotDePasseActuel("");
-                      setNouveauMotDePasse("");
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : null}
         </div>
       </div>
     </section>
