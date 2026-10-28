@@ -50,3 +50,14 @@ test('retourJoueur : additionne les retours des mains séparées', () => {
 
     assert.equal(retourJoueur(player, dealerHand), 30);
 });
+
+test('retourJoueur : ne lit les mains que depuis hands', () => {
+    const player = {
+        bet: 10,
+        hand: [{ rang: 'K' }, { rang: 'Q' }],
+        hands: []
+    };
+    const dealerHand = [{ rang: '9' }, { rang: '8' }];
+
+    assert.equal(retourJoueur(player, dealerHand), 0);
+});

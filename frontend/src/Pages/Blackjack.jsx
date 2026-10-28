@@ -143,7 +143,6 @@ function Blackjack({ setIsLoggedIn }) {
 			players: etat.players.map((player) => ({
 				id_compte: player.id_compte,
 				seat_index: player.seat_index,
-				hand: player.hand ?? [],
 				hands: player.hands ?? [],
 				activeHand: player.activeHand ?? 0,
 				bet: player.bet ?? 0,
@@ -205,13 +204,12 @@ function Blackjack({ setIsLoggedIn }) {
 		}
 		const cartes = melangerSabot();
 		const players = salon.players.map((player) => {
-			if (player.bet <= 0) return { ...player, hand: [], hands: [], activeHand: 0, status: "waiting", isTurn: false };
-			const hand = [cartes.pop(), cartes.pop()];
-			const naturel = totalMain(hand) === 21;
+			if (player.bet <= 0) return { ...player, hands: [], activeHand: 0, status: "waiting", isTurn: false };
+			const cartesInitiales = [cartes.pop(), cartes.pop()];
+			const naturel = totalMain(cartesInitiales) === 21;
 			return {
 				...player,
-				hand,
-				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				hands: [{ cartes: cartesInitiales, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
 				activeHand: 0,
 				status: naturel ? "blackjack" : "playing",
 				isTurn: false,
@@ -312,7 +310,6 @@ function Blackjack({ setIsLoggedIn }) {
 			main.status = "stand";
 		}
 
-		joueur.hand = mains[0]?.cartes ?? [];
 		joueur.status = mains.some((entry) => entry.status === "playing") ? "playing" : "stand";
 		const autreMain = mains.findIndex((entry, index) => index > activeHand && entry.status === "playing");
 		let prochainJoueur = null;
@@ -479,7 +476,7 @@ function Blackjack({ setIsLoggedIn }) {
 							}
 							return mains.map((main, index) => {
 								const issue = issues[index];
-								const delais = planAnimation?.players.find((entry) => entry.seat === player.seat_index)?.cartes ?? [];
+								const delais = planAnimation?.players.find((entry) => entry.seat === player.seat_index)?.mains[index] ?? [];
 								return <div key={`${player.seat_index}-${index}`} className={`bj-main ${player.isTurn && (player.activeHand ?? 0) === index ? "is-active" : ""}`}>
 									<div className="bj-cartes">{main.cartes.map((carte, carteIndex) => <Carte key={`${carteIndex}-${carte.rang}-${carte.couleur}`} carte={carte} delai={delais[carteIndex] ?? null} />)}</div>
 									<p className="has-text-weight-semibold">{joueurLabel}{mains.length > 1 ? ` · Main ${index + 1}` : ""} · {totalMain(main.cartes)} · Mise {formatArgent(main.mise ?? player.bet ?? 0)}</p>

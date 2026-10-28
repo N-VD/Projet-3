@@ -4,6 +4,7 @@ const express = require('express');
 const request = require('supertest');
 
 const salonRouter = require('../Routes/Salon');
+const Salon = require('../models/salon');
 
 // Application Express de test
 const app = express();
@@ -68,6 +69,25 @@ test('DELETE /deleteSalon : rejette un ID MongoDB invalide', () => {
     // Simulation de mongoose.Types.ObjectId.isValid
     const isValid = idInvalide.length === 24; 
     assert.equal(isValid, false);
+});
+
+test('Salon : convertit une ancienne main unique vers hands lors du chargement', () => {
+    const salon = Salon.hydrate({
+        players: [{
+            id_compte: '507f1f77bcf86cd799439011',
+            seat_index: 0,
+            hand: [{ rang: 'A' }, { rang: 'K' }],
+            bet: 10,
+            status: 'blackjack',
+            isTurn: false
+        }]
+    });
+
+    assert.deepEqual(salon.players[0].hands[0].cartes, [{ rang: 'A' }, { rang: 'K' }]);
+    assert.equal(salon.players[0].hands[0].mise, 10);
+    assert.equal(salon.players[0].hands[0].status, 'blackjack');
+    assert.equal(salon.players[0].hands[0].naturel, true);
+    assert.equal(salon.players[0].hand, undefined);
 });
 
 // ── Tests Spectateur ────────────────────────────────────────────────────────

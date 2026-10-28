@@ -15,9 +15,7 @@ function valeurMain(cartes = []) {
 function retourJoueur(player, dealerHand) {
     const totalCroupier = valeurMain(dealerHand);
     const blackjackCroupier = dealerHand?.length === 2 && totalCroupier === 21;
-    const mains = Array.isArray(player.hands) && player.hands.length > 0
-        ? player.hands
-        : [{ cartes: player.hand, mise: player.bet, naturel: player.status === 'blackjack' }];
+    const mains = Array.isArray(player.hands) ? player.hands : [];
 
     return Math.round(mains.reduce((totalRetour, main) => {
         const cartes = main.cartes || [];
