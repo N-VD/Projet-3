@@ -299,10 +299,17 @@ function Blackjack({ setIsLoggedIn }) {
 	/** Entrées : état de manche, cartes restantes et résultats; sortie : Promise résolue après l’enregistrement des résultats. */
 	async function terminer(etat, cartesRestantes, resultatsActuels) {
 		const players = etat.players.map((player) => ({ ...player, isTurn: false }));
-		const joueursRestants = players.some((player) => mainsJoueur(player).some((main) => ["playing", "stand", "blackjack"].includes(main.status)));
+		//const joueursRestants = players.some((player) => mainsJoueur(player).some((main) => ["playing", "stand", "blackjack"].includes(main.status)));
+		//let dealerHand = [...etat.dealer_hand];
+		// une fois le bouton rester est clicker il n'entre pas en boucle vu que joueursRestants deviens false
+		//if (joueursRestants) {
+		//	while (totalMain(dealerHand) < 17 && cartesRestantes.length) dealerHand.push(cartesRestantes.pop());
+		//}
+
+		// il permet entrer directerment dans boucle avec les restriction.
 		let dealerHand = [...etat.dealer_hand];
-		if (joueursRestants) {
-			while (totalMain(dealerHand) < 17 && cartesRestantes.length) dealerHand.push(cartesRestantes.pop());
+		while (totalMain(dealerHand) < 17 && cartesRestantes.length) {
+			dealerHand.push(cartesRestantes.pop());
 		}
 		const totalCroupier = totalMain(dealerHand);
 		const blackjackCroupier = dealerHand.length === 2 && totalCroupier === 21;
@@ -652,7 +659,7 @@ function Blackjack({ setIsLoggedIn }) {
 								onClick={nouvelleManche}
 								disabled={chargement}
 							>
-								 Nouvelle Manche
+								Nouvelle Manche
 							</button>
 						</div>
 					)}
