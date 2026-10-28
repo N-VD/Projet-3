@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import "./Navbar.css";
 
 export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
     const location = useLocation();
@@ -23,12 +24,13 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                 }}
             >
                 <div className="navbar-brand">
-                    <span
-                        className="navbar-item has-text-weight-bold has-text-white"
+                    <Link
+                        to="/"
+                        className="navbar-item navbar-brand-link has-text-weight-bold has-text-white"
                         style={{ fontSize: "1.7rem", letterSpacing: "0.04em" }}
                     >
                         BelleVibe Casino
-                    </span>
+                    </Link>
                 </div>
                 <div className="navbar-end">
                     {isLoggedIn ? (
@@ -41,6 +43,11 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                                 </div>
                             )}
                             <div className="navbar-item">
+                                <Link to="/spectateur" className="button is-light">
+                                    Spectateur
+                                </Link>
+                            </div>
+                            <div className="navbar-item">
                                 <button className="button is-light" onClick={handleLogout}>
                                     Se déconnecter
                                 </button>
@@ -48,6 +55,11 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                         </>
                     ) : (
                         <>
+                            <div className="navbar-item">
+                                <Link to="/spectateur" className="button is-light">
+                                    Spectateur
+                                </Link>
+                            </div>
                             <div className="navbar-item">
                                 <Link to="/register" className="button is-light">
                                     S'inscrire

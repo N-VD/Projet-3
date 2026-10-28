@@ -35,4 +35,4 @@ function retourJoueur(player, dealerHand) {
     }, 0) * 100) / 100;
 }
 
-module.exports = { retourJoueur };
+module.exports = { retourJoueur, valeurMain };

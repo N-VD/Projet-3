@@ -2,6 +2,7 @@ const express = require('express');
 const { authentifier } = require('../fonctionsCommunes');
 const router = express.Router();
 const Compte = require('../models/compte');
+const Transaction = require('../models/transaction');
 
 router.post('/ajouterArgent', authentifier, async (req, res) => {
     const { montant } = req.body;
@@ -22,6 +23,11 @@ router.post('/ajouterArgent', authentifier, async (req, res) => {
     // Ajouter le montant au compte
     compte.montant += montantNumerique;
     await compte.save();
+    await Transaction.create({
+        id_compte: compte._id,
+        desc: "Ajout d'argent",
+        montant: montantNumerique
+    });
 
     res.status(200).json({
         message: "Argent ajouté avec succès",
@@ -58,6 +64,11 @@ router.post('/retirerArgent', authentifier, async (req, res) => {
     // Retirer le montant du compte
     compte.montant -= montantNumerique;
     await compte.save();
+    await Transaction.create({
+        id_compte: compte._id,
+        desc: "Retrait d'argent",
+        montant: -montantNumerique
+    });
 
     res.status(200).json({
         message: "Argent retiré avec succès",
@@ -82,6 +93,15 @@ router.get('/solde', authentifier, async (req, res) => {
     res.status(200).json({
         solde: compte.montant
     });
+});
+
+router.get('/transactions', authentifier, async (req, res) => {
+    const transactions = await Transaction.find({
+        id_compte: req.user.id,
+        desc: { $in: ["Ajout d'argent", "Retrait d'argent"] }
+    }).sort({ created_at: -1 });
+
+    res.status(200).json({ transactions });
 });
 
 module.exports = router;
