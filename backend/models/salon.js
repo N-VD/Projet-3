@@ -6,6 +6,7 @@ const playerInSalonSchema = new mongoose.Schema({
   seat_index: { type: Number, required: true },
   hand: { type: Array, default: [] },
   hands: { type: Array, default: [] },
+  resultats: { type: Array, default: [] },
   activeHand: { type: Number, default: 0 },
   bet: { type: Number, default: 0 },
   status: { type: String, default: 'waiting' }, // waiting, finished

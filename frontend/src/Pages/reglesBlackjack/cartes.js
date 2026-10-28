@@ -19,17 +19,25 @@ export function valeurCarte(rang) {
 }
 
 export function totalMain(cartes) {
-	let total = 0;
-	let as = 0;
-	for (const carte of cartes) {
-		total += valeurCarte(carte.rang);
-		if (carte.rang === "A") as++;
-	}
-	while (total > 21 && as > 0) {
-		total -= 10;
-		as--;
-	}
-	return total;
+    if (!Array.isArray(cartes)) return 0;
+    
+    let total = 0;
+    let as = 0;
+    
+    for (const carte of cartes) {
+        // Sécurité : si la carte ou son rang est manquant, on l'ignore
+        if (!carte || !carte.rang) continue; 
+
+        total += valeurCarte(carte.rang);
+        if (carte.rang === "A") as++;
+    }
+    
+    while (total > 21 && as > 0) {
+        total -= 10;
+        as--;
+    }
+    
+    return total;
 }
 
 export function mainsJoueur(joueur) {
@@ -60,5 +68,10 @@ export function idSalon(salon) {
 
 export function normaliserSalon(salon) {
 	if (!salon) return null;
-	return { ...salon, salonId: idSalon(salon), players: salon.players ?? [], dealer_hand: salon.dealer_hand ?? [] };
+	return {
+		...salon,
+		salonId: idSalon(salon),
+		players: [...(salon.players ?? [])].sort((a, b) => a.seat_index - b.seat_index),
+		dealer_hand: salon.dealer_hand ?? [],
+	};
 }

@@ -2,6 +2,8 @@ function valeurMain(cartes = []) {
     let total = 0;
     let as = 0;
     for (const carte of cartes) {
+
+        if (!carte || !carte.rang) continue;// Sécurité : si la carte est null ou undefined, on l'ignore
         total += carte.rang === 'A' ? 11 : ['J', 'Q', 'K'].includes(carte.rang) ? 10 : Number(carte.rang);
         if (carte.rang === 'A') as++;
     }
