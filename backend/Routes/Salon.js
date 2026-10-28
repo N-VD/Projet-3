@@ -4,7 +4,7 @@ const { authentifier } = require('../fonctionsCommunes');
 const Salon = require('../models/salon');
 const Compte = require('../models/compte');
 const Transaction = require('../models/transaction');
-const { retourJoueur } = require('../jeux/reglementSalon');
+const { retourJoueur, valeurMain } = require('../jeux/reglementSalon');
 const router = express.Router();
 
 
