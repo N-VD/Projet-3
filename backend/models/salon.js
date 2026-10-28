@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const playerInSalonSchema = new mongoose.Schema({
   id_compte: { type: mongoose.Schema.Types.ObjectId, ref: 'Compte', required: true },
   seat_index: { type: Number, required: true },
-  hand: { type: Array, default: [] },
   hands: { type: Array, default: [] },
   activeHand: { type: Number, default: 0 },
   bet: { type: Number, default: 0 },
@@ -21,6 +20,25 @@ const salonSchema = new mongoose.Schema({
   currentTurnSeat: { type: Number, default: 0 },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
+});
+
+salonSchema.pre('init', function(data) {
+  for (const player of data.players ?? []) {
+    if (!player || typeof player !== 'object') continue;
+    if ((!Array.isArray(player.hands) || player.hands.length === 0)
+      && Array.isArray(player.hand) && player.hand.length > 0) {
+      const status = player.status === 'blackjack' || player.status === 'stand' || player.status === 'bust'
+        ? player.status
+        : 'playing';
+      player.hands = [{
+        cartes: player.hand,
+        mise: Number(player.bet ?? 0),
+        status,
+        naturel: status === 'blackjack'
+      }];
+    }
+    delete player.hand;
+  }
 });
 
 module.exports = mongoose.model('Salon', salonSchema);

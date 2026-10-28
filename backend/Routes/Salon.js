@@ -96,7 +96,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
         salon.players.push({
             id_compte: req.user.id,
             seat_index,
-            hand: [],
+            hands: [],
             bet: 0,
             status: 'waiting',
             isTurn: false
