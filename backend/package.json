@@ -8,7 +8,9 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.1",
     "nodemon": "^3.1.14",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "ws": "^8.15.0"
+
   },
   "scripts": {
     "test": "node --test",

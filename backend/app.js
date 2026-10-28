@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const http = require('http'); //lier websocket au serveur http
 
 // 1. Détection et création du fichier .env à la racine
 const envPath = path.join(__dirname, '..', '.env');
@@ -26,6 +27,8 @@ const port = process.env.PORT ?? 3000;
 const mongoose = require('mongoose');
 const cors = require('cors');
 const initComptesAutomatiques = require('./initComptes');
+
+const { createWSS } = require('./Websocket/createwss');//ajout pour websocket
 
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
@@ -66,6 +69,9 @@ app.use(portefeuilleRouter);
 app.use(blackjackRouter);
 app.use(creationSalonRouter);
 
-app.listen(port, () => {
+const server = http.createServer(app);
+createWSS(server);
+
+server.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
 });

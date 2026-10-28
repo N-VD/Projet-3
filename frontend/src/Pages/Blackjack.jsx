@@ -268,7 +268,7 @@ function Blackjack({ setIsLoggedIn }) {
         const texte = inputElement.value.trim();
 
         if (texte) {
-            sendWebSocketMessage('chat', { text: texte });
+            sendWebSocketMessage('chat', { text: texte,user: utilisateur.nom  });
             inputElement.value = '';
         }
     }

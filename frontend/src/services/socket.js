@@ -2,8 +2,10 @@ let ws = null;
 
 export function connectWebSocket(onMessageCallback) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+  const token = localStorage.getItem("token") || "";
   // Connexion sur le port 3000 de ton backend sur le chemin /ws
-  const wsUrl = `${protocol}//${window.location.hostname}:3000/ws`;
+  const wsUrl = `${protocol}//${window.location.hostname}:3000`;
 
   ws = new WebSocket(wsUrl);
 
