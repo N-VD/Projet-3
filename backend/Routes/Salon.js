@@ -239,11 +239,14 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
             if (hasCurrentTurnSeat) updateData.currentTurnSeat = currentTurnSeat;
 
             // 2. On applique la mise à jour atomique en base de données
-            const salonMisAJour = await Salon.findByIdAndUpdate(
+            salonMisAJour = await Salon.findByIdAndUpdate(
                 salon._id || salon.id,
                 updateData,
                 { new: true, runValidators: true }
             );
+            if (!salonMisAJour) {
+                throw new Error('Le salon n’a pas pu être rechargé après sa mise à jour.');
+            }
 
         } catch (error) {
             for (const entree of mouvementsCompte.reverse()) {

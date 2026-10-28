@@ -15,9 +15,14 @@ import {
 	totalMain,
 } from "./reglesBlackjack/outils.js";
 
+function memeIdentifiant(premier, second) {
+	return premier != null && second != null && String(premier) === String(second);
+}
+
 /** Entrée : le callback setIsLoggedIn; sortie : le JSX de la page Blackjack. */
 function Blackjack({ setIsLoggedIn }) {
 	const utilisateur = lireUtilisateur();
+	const idUtilisateur = utilisateur.id ?? utilisateur._id;
 	const role = utilisateur.role?.toLowerCase();
 	const estDealer = role === "dealer" || role === "admin";
 	const [salon, setSalon] = useState(null);
@@ -147,7 +152,7 @@ function Blackjack({ setIsLoggedIn }) {
 	/** Entrée : salon choisi; sortie : Promise résolue après la tentative de rejoindre une place aléatoire. */
 	async function rejoindreSalon(salonChoisi) {
 		const idS = idSalon(salonChoisi);
-		const joueurExistant = salonChoisi.players.find((player) => player.id_compte === utilisateur.id);
+		const joueurExistant = salonChoisi.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 
 		let data;
 		if (joueurExistant) {
@@ -246,7 +251,7 @@ function Blackjack({ setIsLoggedIn }) {
 			setMessage("La mise ne peut pas dépasser votre solde.");
 			return;
 		}
-		const players = salon.players.map((player) => player.id_compte === utilisateur.id
+		const players = salon.players.map((player) => memeIdentifiant(player.id_compte, idUtilisateur)
 			? { ...player, bet: Number(mise) }
 			: player);
 		await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
@@ -337,7 +342,7 @@ function Blackjack({ setIsLoggedIn }) {
 			...player,
 			hands: mainsJoueur(player).map((main) => ({ ...main, cartes: [...main.cartes] })),
 		}));
-		const joueur = players.find((player) => player.id_compte === utilisateur.id);
+		const joueur = players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 		const mains = joueur.hands;
 		const activeHand = joueur.activeHand ?? 0;
 		const main = mains[activeHand];
@@ -398,17 +403,17 @@ function Blackjack({ setIsLoggedIn }) {
 	/** Entrée : aucune; sortie : Promise résolue après la mise à jour du salon et le retour à la liste. */
 	async function quitterSalon() {
 		if (!salon) return;
-		const joueur = salon.players.find((player) => player.id_compte === utilisateur.id);
+		const joueur = salon.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 
 		if (salon.status === "waiting" && joueur) {
 			const joueurs = salon.players
-				.filter((player) => player.id_compte !== utilisateur.id)
+				.filter((player) => !memeIdentifiant(player.id_compte, idUtilisateur))
 				.map((player) => ({ ...player, isTurn: false }));
 			const etat = { ...salon, players: joueurs, currentTurnSeat: SIEGE_INACTIF };
 			if (!await sauvegarder(etat)) return;
 		} else if (salon.status === "playing" && joueur) {
 			const joueurs = salon.players.map((player) => (
-				player.id_compte === utilisateur.id && player.status === "playing"
+				memeIdentifiant(player.id_compte, idUtilisateur) && player.status === "playing"
 					? { ...player, status: "stand", isTurn: false }
 					: { ...player }
 			));
@@ -457,7 +462,7 @@ function Blackjack({ setIsLoggedIn }) {
 		};
 	}, [salon?.salonId, salon?.status, salon?.players]);
 
-	const monJoueur = salon?.players.find((player) => player.id_compte === utilisateur.id);
+	const monJoueur = salon?.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 	const enAttente = salon?.status === "waiting";
 	const monTour = salon?.status === "playing" && monJoueur?.isTurn;
 	const mainsDuJoueur = monJoueur ? mainsJoueur(monJoueur) : [];
@@ -502,7 +507,7 @@ function Blackjack({ setIsLoggedIn }) {
 									<td>{salonDisponible.players.length} / 6</td>
 									<td>{placesLibres}</td>
 									<td>{estDealer ? estCreateur && <button className="button is-small is-danger" onClick={() => fermerSalon(salonDisponible)} disabled={chargement || salonDisponible.status === "playing"} aria-label={`Fermer le salon ${idSalon(salonDisponible)}`}><span className="icon"><i className="fas fa-times" /></span><span>Fermer</span></button> : (() => {
-										const joueurExistant = salonDisponible.players.some((player) => player.id_compte === utilisateur.id);
+										const joueurExistant = salonDisponible.players.some((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 										return <button className="button is-small is-warning" onClick={() => rejoindreSalon(salonDisponible)} disabled={chargement || (!joueurExistant && (salonDisponible.status !== "waiting" || placesLibres === 0))}>{joueurExistant ? "Revenir au salon" : "Choisir ce salon"}</button>;
 									})()}</td>
 								</tr>;
@@ -530,12 +535,7 @@ function Blackjack({ setIsLoggedIn }) {
 								: resultats[player.seat_index] ? [resultats[player.seat_index]] : [];
 
 							// Détermine l'étiquette : Vous vs Nom/Email du Joueur
-							console.log("--- DEBUG JOUEUR ---");
-							console.log("player.id_compte :", player.id_compte);
-							console.log("Objet utilisateur complet :", utilisateur);
-							console.log("utilisateur.id :", utilisateur?.id);
-							console.log("utilisateur._id :", utilisateur?._id);
-							const estMonJoueur = player.id_compte === utilisateur.id || player.id_compte === utilisateur._id;
+							const estMonJoueur = memeIdentifiant(player.id_compte, idUtilisateur);
 							const nomJoueur = player.nom || player.email || `Joueur ${player.seat_index + 1}`;
 							const joueurLabel = estMonJoueur ? "Vous" : nomJoueur;
 
@@ -562,13 +562,15 @@ function Blackjack({ setIsLoggedIn }) {
 										className={`bj-main ${tourActif ? "is-active" : ""}`}
 									>
 										<div className="bj-cartes">
-											{main.cartes.map((carte, carteIndex) => (
-												<Carte
-													key={`${carteIndex}-${carte.rang}-${carte.couleur}`}
-													carte={carte}
-													delai={delais[carteIndex] ?? null}
-												/>
-											))}
+											{main.cartes
+												.filter(carte => carte !== null && carte !== undefined)
+												.map((carte, carteIndex) => (
+													<Carte
+														key={`${carteIndex}-${carte.rang ?? 'inconnu'}-${carte.couleur ?? 'inconnue'}`}
+														carte={carte}
+														delai={delais[carteIndex] ?? null}
+													/>
+												))}
 										</div>
 										<p className="has-text-weight-semibold">
 											Siège {player.seat_index + 1} ({joueurLabel})
@@ -616,7 +618,21 @@ function Blackjack({ setIsLoggedIn }) {
 						<button className="button is-light is-medium" onClick={() => actionJoueur("stand")} disabled={chargement || enAnimation}><span className="icon"><i className="fas fa-hand-paper" /></span><span>Rester</span></button>
 						{peutDiviser && <button className="button is-light is-medium" onClick={() => actionJoueur("split")} disabled={chargement || enAnimation}><span className="icon"><i className="fas fa-columns" /></span><span>Séparer</span></button>}
 					</div>}
-					{salon.status === "finished" && <p className="has-text-centered mt-5">Manche terminée. Les résultats sont affichés ci-dessus.</p>}
+					{salon.status === "finished" && (
+						<div className="has-text-centered mt-5">
+							<p className="mb-3">Manche terminée. Les résultats sont affichés ci-dessus.</p>
+							{/* Bouton de réinitialisation pour lancer une nouvelle manche sans bug de cache */}
+							<button
+								className="button is-primary is-medium"
+								onClick={() => {
+									// Recharge la page proprement pour réinitialiser la table et la connexion WebSocket
+									window.location.reload();
+								}}
+							>
+								🔄 Nouvelle Manche
+							</button>
+						</div>
+					)}
 				</div>}
 
 				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
