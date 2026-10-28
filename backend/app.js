@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const http = require('http'); // 1. IMPORTANT : Ne pas oublier d'importer http
+const { initialiserSocketServer } = require('./sockets/socketServer');
 
 // 1. Détection et création du fichier .env à la racine
 const envPath = path.join(__dirname, '..', '.env');
@@ -22,6 +24,7 @@ PORT=3000
 require('dotenv').config({ path: envPath });
 const express = require('express');
 const app = express();
+const server = http.createServer(app); // 2. Création du serveur HTTP partagé
 const port = process.env.PORT ?? 3000;
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -31,13 +34,9 @@ const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
 const creationSalonRouter = require('./Routes/Salon');
 
-
-
 app.use(cors());
 app.use(express.json());
 
-
-// ajout de la connexion
 // Connexion Mongoose pour exécution hors Docker (en local)
 const mongoUser = encodeURIComponent(process.env.DB_USER || 'admin');
 const mongoPassword = encodeURIComponent(process.env.DB_PASSWORD || '');
@@ -52,18 +51,18 @@ mongoose.connect(mongoURI)
     })
     .catch((err) => console.error("Erreur de connexion MongoDB :", err));
 
-
-
 app.get("/", (req, res) => {
     res.send("Serveur fonctionne");
 });
 
-
+// 3. Initialisation de Socket.io sur le serveur HTTP
+initialiserSocketServer(server);
 
 app.use(comptesRouter);
 app.use(portefeuilleRouter);
 app.use(creationSalonRouter);
 
-app.listen(port, () => {
+// 4. IMPORTANT : On écoute sur `server.listen` (et non `app.listen`) pour activer Express ET Socket.io sur le même port
+server.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
 });
