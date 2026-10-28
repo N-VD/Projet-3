@@ -111,7 +111,55 @@ router.get('/me', authentifier, async (req, res) => {
     res.json(compte);
 });
 
+// Modifier le nom d'utilisateur du compte connecté
+router.patch('/modifierNomUtilisateur', authentifier, async (req,  res) => {
+    const idCompte = req.user.id;
+    const { nom } = req.body;
 
+    if (typeof nom !== 'string' || !nom.trim()) {
+        return res.status(400).json({ message: "Veuillez entrer un nom d'utilisateur valide" });
+    }
+
+    try {
+        await Compte.findByIdAndUpdate(idCompte, { nom: nom.trim() }, { runValidators: true });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: "Ce nom d'utilisateur est déjà pris" });
+        }
+        throw error;
+    }
+
+    res.json({ message : "Compte modifié avec succès"});
+});
+
+router.patch('/modifierMotDePasse', authentifier, async (req, res) => {
+    const idCompte = req.user.id;
+    const { motDePasseActuel, nouveauMotDePasse } = req.body;
+
+    if (typeof motDePasseActuel !== 'string' || !motDePasseActuel || typeof nouveauMotDePasse !== 'string' || !nouveauMotDePasse) {
+        return res.status(400).json({ message: "Le mot de passe actuel et le nouveau mot de passe sont obligatoires" });
+    }
+
+    const erreurMotDePasse = validerMotDePasse(nouveauMotDePasse);
+    if (erreurMotDePasse) {
+        return res.status(400).json({ message: erreurMotDePasse });
+    }
+
+    const compte = await Compte.findById(idCompte);
+    if (!compte) {
+        return res.status(404).json({ message: "Compte non trouvé" });
+    }
+
+    const motDePasseActuelValide = await bcrypt.compare(motDePasseActuel, compte.password);
+    if (!motDePasseActuelValide) {
+        return res.status(401).json({ message: "Le mot de passe actuel est incorrect" });
+    }
+
+    compte.password = await bcrypt.hash(nouveauMotDePasse, 10);
+    await compte.save();
+
+    res.json({ message: "Mot de passe modifié avec succès" });
+});
 
 
 module.exports = router;

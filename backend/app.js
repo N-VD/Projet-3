@@ -29,7 +29,6 @@ const initComptesAutomatiques = require('./initComptes');
 
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
-const blackjackRouter = require('./Routes/Blackjack');
 const creationSalonRouter = require('./Routes/Salon');
 
 
@@ -63,7 +62,6 @@ app.get("/", (req, res) => {
 
 app.use(comptesRouter);
 app.use(portefeuilleRouter);
-app.use(blackjackRouter);
 app.use(creationSalonRouter);
 
 app.listen(port, () => {

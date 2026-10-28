@@ -4,6 +4,7 @@ const { authentifier } = require('../fonctionsCommunes');
 const Salon = require('../models/salon');
 const Compte = require('../models/compte');
 const Transaction = require('../models/transaction');
+const { retourJoueur } = require('../jeux/reglementSalon');
 const router = express.Router();
 
 
@@ -73,47 +74,6 @@ function vueInviteJoueur(salon) {
         nom: salon.players[index].id_compte?.nom ?? null,
     }));
     return vue;
-}
-
-
-
-function valeurMain(cartes = []) {
-    let total = 0;
-    let as = 0;
-    for (const carte of cartes) {
-        total += carte.rang === 'A' ? 11 : ['J', 'Q', 'K'].includes(carte.rang) ? 10 : Number(carte.rang);
-        if (carte.rang === 'A') as++;
-    }
-    while (total > 21 && as > 0) {
-        total -= 10;
-        as--;
-    }
-    return total;
-}
-
-function ajustementJoueur(player, dealerHand) {
-    const totalCroupier = valeurMain(dealerHand);
-    const blackjackCroupier = dealerHand?.length === 2 && totalCroupier === 21;
-    const mains = Array.isArray(player.hands) && player.hands.length > 0
-        ? player.hands
-        : [{ cartes: player.hand, mise: player.bet, naturel: player.status === 'blackjack' }];
-
-    return mains.reduce((totalAjustement, main) => {
-        const cartes = main.cartes || [];
-        const totalJoueur = valeurMain(cartes);
-        const mise = Math.round(Number(main.mise ?? player.bet) * 100) / 100;
-        const blackjackJoueur = Boolean(main.naturel) && cartes.length === 2 && totalJoueur === 21;
-        let ajustement = 0;
-
-        if (!Number.isFinite(mise) || mise <= 0) return totalAjustement;
-        if (totalJoueur > 21 || blackjackCroupier && !blackjackJoueur) ajustement = -mise;
-        else if (blackjackJoueur && blackjackCroupier) ajustement = 0;
-        else if (blackjackJoueur) ajustement = Math.round(mise * 150) / 100;
-        else if (totalCroupier > 21 || totalJoueur > totalCroupier) ajustement = mise;
-        else if (totalJoueur < totalCroupier) ajustement = -mise;
-
-        return Math.round((totalAjustement + ajustement) * 100) / 100;
-    }, 0);
 }
 
 // Routes
@@ -328,39 +288,74 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
             });
         }
 
-        const ajustements = [];
+        const mouvementsCompte = [];
         try {
-            if (hasPlayers) {
-                const mainCroupier = hasDealerHand ? dealer_hand : salon.dealer_hand;
+            const demarrePartie = salon.status === 'waiting'
+                && (status === 'playing' || status === 'finished')
+                && salon.players.some((player) => Number(player.bet) > 0);
+            const terminePartie = status === 'finished'
+                && (salon.status === 'playing' || demarrePartie);
+            const mainCroupier = hasDealerHand ? dealer_hand : salon.dealer_hand;
+
+            async function appliquerMouvement(idCompte, montant, desc, debit = false) {
+                const filtre = { _id: idCompte };
+                if (debit) filtre.montant = { $gte: montant };
+                const compte = await Compte.findOneAndUpdate(
+                    filtre,
+                    { $inc: { montant: debit ? -montant : montant } },
+                    { new: true }
+                );
+                if (!compte) {
+                    const erreur = new Error(debit ? 'Solde insuffisant pour cette mise.' : 'Compte introuvable pour le règlement.');
+                    erreur.code = debit ? 'INSUFFICIENT_FUNDS' : 'ACCOUNT_NOT_FOUND';
+                    throw erreur;
+                }
+
+                const entree = { id_compte: idCompte, montant: debit ? -montant : montant, transactionId: null };
+                mouvementsCompte.push(entree);
+                const transaction = await Transaction.create({
+                    id_compte: idCompte,
+                    desc,
+                    montant: entree.montant
+                });
+                entree.transactionId = transaction._id;
+            }
+
+            if (demarrePartie) {
+                for (const player of salon.players) {
+                    const mise = Math.round(Number(player.bet) * 100) / 100;
+                    if (!Number.isFinite(mise) || mise <= 0) continue;
+                    await appliquerMouvement(player.id_compte, mise, 'Mise blackjack en salon', true);
+                }
+            }
+
+            if (salon.status === 'playing' && hasPlayers) {
                 for (const player of nextPlayers) {
                     const ancienJoueur = salon.players.find((ancien) => ancien.seat_index === player.seat_index);
-                    const memeCompte = ancienJoueur?.id_compte?.toString() === player.id_compte?.toString();
-                    if (!memeCompte || ancienJoueur.status === 'finished' || player.status !== 'finished') continue;
-
-                    const ajustement = ajustementJoueur(player, mainCroupier);
-                    if (ajustement === 0) continue;
-
-                    const filtreCompte = { _id: ancienJoueur.id_compte };
-                    if (ajustement < 0) filtreCompte.montant = { $gte: -ajustement };
-                    const compte = await Compte.findOneAndUpdate(
-                        filtreCompte,
-                        { $inc: { montant: ajustement } },
-                        { new: true }
-                    );
-                    if (!compte) {
-                        const erreur = new Error('Solde insuffisant pour enregistrer la perte.');
-                        erreur.code = 'INSUFFICIENT_FUNDS';
-                        throw erreur;
+                    if (ancienJoueur?.id_compte?.toString() !== player.id_compte?.toString()) continue;
+                    const anciennesMains = Array.isArray(ancienJoueur.hands) ? ancienJoueur.hands : [];
+                    const nouvellesMains = Array.isArray(player.hands) ? player.hands : [];
+                    if (nouvellesMains.length > anciennesMains.length) {
+                        const miseAncienne = anciennesMains.reduce((total, main) => total + Number(main.mise || 0), 0);
+                        const miseNouvelle = nouvellesMains.reduce((total, main) => total + Number(main.mise || 0), 0);
+                        const coutSupplementaire = Math.round((miseNouvelle - miseAncienne) * 100) / 100;
+                        if (coutSupplementaire > 0) {
+                            await appliquerMouvement(player.id_compte, coutSupplementaire, 'Mise split blackjack en salon', true);
+                        }
                     }
+                }
+            }
 
-                    const entree = { id_compte: ancienJoueur.id_compte, montant: ajustement, transactionId: null };
-                    ajustements.push(entree);
-                    const transaction = await Transaction.create({
-                        id_compte: ancienJoueur.id_compte,
-                        desc: ajustement < 0 ? 'Perte blackjack en salon' : 'Gain blackjack en salon',
-                        montant: ajustement
-                    });
-                    entree.transactionId = transaction._id;
+            if (terminePartie && hasPlayers) {
+                for (const player of nextPlayers) {
+                    const ancienJoueur = salon.players.find((ancien) => ancien.seat_index === player.seat_index);
+                    if (ancienJoueur?.id_compte?.toString() !== player.id_compte?.toString()
+                        || ancienJoueur.status === 'finished' || player.status !== 'finished') continue;
+
+                    const retour = retourJoueur(player, mainCroupier);
+                    if (retour > 0) {
+                        await appliquerMouvement(ancienJoueur.id_compte, retour, 'Retour et gain blackjack en salon');
+                    }
                 }
             }
 
@@ -371,11 +366,11 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
             salon.updated_at = new Date();
             await salon.save();
         } catch (error) {
-            for (const entree of ajustements.reverse()) {
+            for (const entree of mouvementsCompte.reverse()) {
                 await Compte.findByIdAndUpdate(entree.id_compte, { $inc: { montant: -entree.montant } });
                 if (entree.transactionId) await Transaction.findByIdAndDelete(entree.transactionId);
             }
-            if (error.code === 'INSUFFICIENT_FUNDS') {
+            if (error.code === 'INSUFFICIENT_FUNDS' || error.code === 'ACCOUNT_NOT_FOUND') {
                 return res.status(400).json({ message: error.message });
             }
             throw error;
