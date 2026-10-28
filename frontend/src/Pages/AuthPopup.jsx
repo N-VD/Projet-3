@@ -1,16 +1,16 @@
-import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-export default function AuthPopup({ isLoggedIn }) {
+export default function AuthPopup({ isLoggedIn, isGuest, setIsGuest }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const [isGuest, setIsGuest] = useState(false);
 
-    const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+    const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname.startsWith("/spectateur");
     if (isLoggedIn || isGuest || isAuthPage) return null;
 
     function continueAsGuest() {
+        sessionStorage.setItem("guest", "true");
         setIsGuest(true);
+        navigate("/spectateur");
     }
 
     return (

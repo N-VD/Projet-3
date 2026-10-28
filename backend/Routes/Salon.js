@@ -7,7 +7,133 @@ const Transaction = require('../models/transaction');
 const { retourJoueur } = require('../jeux/reglementSalon');
 const router = express.Router();
 
+
+// est un joueur
+
+function estJoueurDuSalon(salon, idCompte) {
+    return salon.players.some((player) => player.id_compte.toString() === idCompte.toString());
+}
+
+//vue spectateur
+function vueInvite(salon) {
+    const enCours = salon.status === 'playing';
+    const dealer_hand = enCours ? [salon.dealer_hand[0], { cachee: true }] : salon.dealer_hand;
+    return {
+        status: salon.status,
+        dealer_hand: {
+            cartes: dealer_hand,
+            total: valeurMain(enCours ? [salon.dealer_hand[0]] : salon.dealer_hand),
+        },
+        players: salon.players.map((player) => ({
+            seat_index: player.seat_index,
+            cartes: player.hand,
+            total: valeurMain(player.hand),
+            mise: player.bet,
+            status: player.status,
+            isTurn: player.isTurn,
+            mains: mainsDuJoueur(player).map((main) => ({
+                cartes: main.cartes || [],
+                total: valeurMain(main.cartes),
+                mise: main.mise ?? player.bet,
+                // résultat seulement une fois la manche finie (cartes du croupier révélées)
+                resultat: !enCours && salon.dealer_hand.length > 0 ? resultatMain(main, salon.dealer_hand) : null,
+            })),
+        })),
+        currentTurnSeat: enCours ? salon.currentTurnSeat : null,
+    };
+}
+
+// mains d'un joueur : hands s'il a séparé, sinon sa main simple
+function mainsDuJoueur(player) {
+    if (Array.isArray(player.hands) && player.hands.length > 0) return player.hands;
+    if (Array.isArray(player.hand) && player.hand.length > 0) {
+        return [{ cartes: player.hand, mise: player.bet, naturel: player.status === 'blackjack' }];
+    }
+    return [];
+}
+
+// même règles que terminer() dans Blackjack.jsx
+function resultatMain(main, dealerHand) {
+    const totalCroupier = valeurMain(dealerHand);
+    const blackjackCroupier = dealerHand.length === 2 && totalCroupier === 21;
+    const totalJoueur = valeurMain(main.cartes);
+    if (totalJoueur > 21) return 'perdu';
+    if (main.naturel && blackjackCroupier) return 'egalite';
+    if (main.naturel) return 'blackjack';
+    if (blackjackCroupier) return 'perdu';
+    if (totalCroupier > 21 || totalJoueur > totalCroupier) return 'gagne';
+    if (totalJoueur === totalCroupier) return 'egalite';
+    return 'perdu';
+}
+
+//vue spectateur avec un compte : vue invité + nom des joueurs (salon avec players.id_compte populé)
+function vueInviteJoueur(salon) {
+    const vue = vueInvite(salon);
+    vue.players = vue.players.map((player, index) => ({
+        ...player,
+        nom: salon.players[index].id_compte?.nom ?? null,
+    }));
+    return vue;
+}
+
 // Routes
+
+// route avoir les salons
+
+router.get('/spectateur/salons', async (req, res) => {
+    try {
+        const salons = await Salon.find({ status: { $in: ['waiting', 'playing'] } })
+            .select('_id status players.seat_index created_at')
+            .sort({ created_at: 1 })
+            .lean();
+        return res.status(200).json({ salons });
+    } catch (error) {
+        return res.status(500).json({ message: 'Erreur lors du chargement des salons.' });
+    }
+});
+
+
+//Route vision spectateur
+router.get('/spectateur/salons/:id', async (req, res) => {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+        return res.status(400).json({ message: "Identifiant de salon invalide." });
+    }
+
+    try {
+        const salon = await Salon.findById(id);
+        if (!salon) {
+            return res.status(404).json({ message: "Salon introuvable." });
+        }
+        return res.status(200).json(vueInvite(salon));
+    } catch (error) {
+        return res.status(500).json({ message: "Erreur lors de la récupération du salon." });
+    }
+});
+
+//Route vision spectateur avec un compte
+router.get('/spectateur/compte/salons/:id', authentifier, async (req, res) => {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+        return res.status(400).json({ message: "Identifiant de salon invalide." });
+    }
+
+    try {
+        const salon = await Salon.findById(id);
+        if (!salon) {
+            return res.status(404).json({ message: "Salon introuvable." });
+        }
+        // calculé avant le populate, car id_compte devient ensuite un objet
+        const estMaTable = estJoueurDuSalon(salon, req.user.id);
+        await salon.populate('players.id_compte', 'nom');
+        return res.status(200).json({ ...vueInviteJoueur(salon), estMaTable });
+    } catch (error) {
+        return res.status(500).json({ message: "Erreur lors de la récupération du salon." });
+    }
+});
+
 // Routes Pour crée un Salon
 router.post('/createSalon', authentifier, async (req, res) => {
     const role = req.user?.role?.toLowerCase();
@@ -141,6 +267,10 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
 
         if (!salon) {
             return res.status(404).json({ message: 'Salon non trouvé.' });
+        }
+
+        if (role !== 'dealer' && role !== 'admin' && !estJoueurDuSalon(salon, req.user.id)) {
+            return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas joueur de ce salon." });
         }
 
         // Vérifie que les joueurs a la variable isTurn = true si le currentTurnSeat est le seat du joueurs 
@@ -306,3 +436,6 @@ router.delete('/deleteSalon', authentifier, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.vueInvite = vueInvite;
+module.exports.vueInviteJoueur = vueInviteJoueur;
+module.exports.estJoueurDuSalon = estJoueurDuSalon;
