@@ -22,3 +22,9 @@ Scéance 7 : Répartition des taches pour le sprint 1 + fix sprint et vision
 Scéance 8 - 11 : Travail chacun sur notre partie
 
 Scéance 12 : Rencontre en classe pour déterminer ce qui reste a faire avant la remise, quelques fix
+
+Scéance 13 (Mercredi 7 octobre) : Retour sur le sprint avec la prof
+
+Scéance 14 (Mercredi 21 octobre) : Division des taches pour le sprint 2
+
+Scéance 15-16 (Vendredi 23 octobre et Mercredi 28 octobre) : Travail chacun sur sa partie

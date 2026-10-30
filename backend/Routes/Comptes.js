@@ -10,14 +10,6 @@ const router = express.Router();
 
 const MESSAGE_CONNEXION_INVALIDE = "Identifiants incorrects";
 
-function genererToken(compte) {
-    return jwt.sign(
-        { id: compte._id, nom: compte.nom, role: compte.role },
-        jwt_mdp,
-        { expiresIn: '1h' }
-    );
-}
-
 router.post('/register', async (req, res) => {
     const { nom, password, date_naissance, email } = req.body;
 
@@ -78,7 +70,8 @@ router.post('/login', async (req, res) => {
     const compte = await Compte.findOne({ $or: [{ nom: identifiant }, { email: identifiant }] });
 
     // Message générique : on ne révèle pas si c'est l'identifiant ou le mot de passe qui est fautif
-    if (!compte || !(await bcrypt.compare(password, compte.password))) {
+    // Un compte GitHub n'a pas de mot de passe : il doit passer par OAuth
+    if (!compte || !compte.password || !(await bcrypt.compare(password, compte.password))) {
         return res.status(401).json({ message: MESSAGE_CONNEXION_INVALIDE });
     }
 
@@ -157,6 +150,9 @@ router.patch('/modifierMotDePasse', authentifier, async (req, res) => {
     const compte = await Compte.findById(idCompte);
     if (!compte) {
         return res.status(404).json({ message: "Compte non trouvé" });
+    }
+    if (!compte.password) {
+        return res.status(400).json({ message: "Ce compte utilise la connexion GitHub et n'a pas de mot de passe" });
     }
 
     const motDePasseActuelValide = await bcrypt.compare(motDePasseActuel, compte.password);

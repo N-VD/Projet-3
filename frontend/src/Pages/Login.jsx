@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { connecterAvecGithub } from "../services/oauthGithub.js";
 
 function Login({ setIsLoggedIn }) {
   const [identifiant, setIdentifiant] = useState("");
@@ -72,6 +73,11 @@ function Login({ setIsLoggedIn }) {
                 <button className="button is-primary is-fullwidth" type="submit">Se connecter</button>
                 {message && <p className="has-text-danger mt-3">{message}</p>}
               </form>
+              <p className="has-text-centered has-text-grey my-3">ou</p>
+              <button className="button is-dark is-fullwidth" type="button" onClick={connecterAvecGithub}>
+                <span className="icon"><i className="fab fa-github" /></span>
+                <span>Se connecter avec GitHub</span>
+              </button>
             </div>
           </div>
         </div>
