@@ -9,6 +9,7 @@ import AuthPopup from "./Pages/AuthPopup.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
 import Spectateur from "./Pages/Spectateur.jsx";
 import SpectateurTable from "./Pages/SpectateurTable.jsx";
+import GithubCallback from "./Pages/GithubCallback.jsx";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -40,6 +41,10 @@ function Routeur() {
 				<Route
 					path="/login"
 					element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login setIsLoggedIn={setIsLoggedIn} />}
+				/>
+				<Route
+					path="/auth/github/callback"
+					element={isLoggedIn ? <Navigate to="/" replace /> : <GithubCallback setIsLoggedIn={setIsLoggedIn} />}
 				/>
 				<Route
 					path="/compte"
