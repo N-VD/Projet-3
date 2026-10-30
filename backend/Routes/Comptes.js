@@ -65,6 +65,10 @@ router.post('/login', async (req, res) => {
     // L'identifiant peut être le nom d'utilisateur ou le courriel
     const identifiant = req.body.identifiant ?? req.body.nom;
     const { password } = req.body;
+    // contre le Injection NoSQL
+    if (typeof identifiant !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({ message: MESSAGE_CONNEXION_INVALIDE });
+    }
 
     const validation = validerChamps({ identifiant, password });
     if (validation !== true) {
