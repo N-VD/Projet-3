@@ -41,16 +41,7 @@ export function totalMain(cartes) {
 }
 
 export function mainsJoueur(joueur) {
-	if (Array.isArray(joueur.hands) && joueur.hands.length > 0) return joueur.hands;
-	if (Array.isArray(joueur.hand) && joueur.hand.length > 0) {
-		return [{
-			cartes: joueur.hand,
-			mise: joueur.bet,
-			status: joueur.status === "blackjack" ? "blackjack" : joueur.status === "stand" ? "stand" : "playing",
-			naturel: joueur.status === "blackjack",
-		}];
-	}
-	return [];
+	return Array.isArray(joueur.hands) ? joueur.hands : [];
 }
 
 export function melangerSabot() {

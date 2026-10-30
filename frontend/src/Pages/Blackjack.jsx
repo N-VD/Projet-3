@@ -195,7 +195,6 @@ function Blackjack({ setIsLoggedIn }) {
 			players: etat.players.map((player) => ({
 				id_compte: player.id_compte,
 				seat_index: player.seat_index,
-				hand: player.hand ?? [],
 				hands: player.hands ?? [],
 				resultats: player.resultats ?? [],
 				activeHand: player.activeHand ?? 0,
@@ -403,7 +402,6 @@ function Blackjack({ setIsLoggedIn }) {
 			main.status = "stand";
 		}
 
-		joueur.hand = mains[0]?.cartes ?? [];
 		joueur.status = mains.some((entry) => entry.status === "playing") ? "playing" : "stand";
 		const autreMain = mains.findIndex((entry, index) => index > activeHand && entry.status === "playing");
 		let prochainJoueur = null;
