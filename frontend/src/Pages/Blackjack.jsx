@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { connecterSocket, deconnecterSocket } from "../services/socket.js";
 import "./Blackjack.css";
 import {
 	API_URL,
@@ -14,9 +15,14 @@ import {
 	totalMain,
 } from "./reglesBlackjack/outils.js";
 
+function memeIdentifiant(premier, second) {
+	return premier != null && second != null && String(premier) === String(second);
+}
+
 /** Entrée : le callback setIsLoggedIn; sortie : le JSX de la page Blackjack. */
 function Blackjack({ setIsLoggedIn }) {
 	const utilisateur = lireUtilisateur();
+	const idUtilisateur = utilisateur.id ?? utilisateur._id;
 	const role = utilisateur.role?.toLowerCase();
 	const estDealer = role === "dealer" || role === "admin";
 	const [salon, setSalon] = useState(null);
@@ -35,6 +41,45 @@ function Blackjack({ setIsLoggedIn }) {
 
 	useEffect(() => () => window.clearTimeout(minuterieAnimation.current), []);
 
+	// 1. Gestion de la connexion Socket.io et synchronisation en temps réel
+	useEffect(() => {
+		const socket = connecterSocket();
+
+		// Récupérer la liste initiale des salons via HTTP
+		appeler("/salons");
+
+		// Écouter les mises à jour globales des salons ou de la table
+		socket.on("mise_a_jour_table", (data) => {
+			if (data.salon) {
+				setSalon(normaliserSalon(data.salon));
+			}
+			if (data.salons) {
+				setSalons(data.salons);
+			}
+		});
+
+		return () => {
+			socket.off("mise_a_jour_table");
+			deconnecterSocket();
+		};
+	}, []);
+	const salonRef = useRef(salon);
+	useEffect(() => {
+		salonRef.current = salon;
+	}, [salon]);
+
+	// Si tu avais déjà une assignation pour lancementAutomatique.current dans un useEffect, 
+	// tu l'adaptes comme ceci :
+	useEffect(() => {
+		lancementAutomatique.current = () => {
+			const salonActuel = salonRef.current;
+			if (!salonActuel) return;
+
+			// C'est ici que tu appelles ta fonction de distribution ou ta logique automatique
+			distribuer();
+		};
+	}, []);
+
 	useEffect(() => {
 		const token = localStorage.getItem("token");
 		fetch(`${API_URL}/solde`, { headers: { Authorization: `Bearer ${token}` } })
@@ -47,13 +92,8 @@ function Blackjack({ setIsLoggedIn }) {
 				}
 				if (response.ok) setSolde(data.solde);
 			})
-			.catch(() => {});
+			.catch(() => { });
 	}, [setIsLoggedIn]);
-
-	useEffect(() => {
-		appeler("/salons");
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
 
 	/** Entrées : chemin API et options fetch; sortie : Promise contenant les données JSON ou null en cas d’échec. */
 	async function appeler(chemin, options = {}) {
@@ -90,7 +130,13 @@ function Blackjack({ setIsLoggedIn }) {
 	/** Entrée : aucune; sortie : Promise résolue après la création et la sélection d’un salon. */
 	async function creerSalon() {
 		const data = await appeler("/createSalon", { method: "POST", body: JSON.stringify({}) });
-		if (data?.salon) setSalon(normaliserSalon(data.salon));
+		if (data?.salon) {
+			const salonNormalise = normaliserSalon(data.salon);
+			setSalon(salonNormalise);
+			// Informer les autres joueurs via Socket.io
+			const socket = connecterSocket();
+			socket.emit("rejoindre_salon", idSalon(data.salon));
+		}
 	}
 
 	/** Entrée : salon créé par le dealer; sortie : Promise résolue après sa suppression. */
@@ -105,31 +151,37 @@ function Blackjack({ setIsLoggedIn }) {
 
 	/** Entrée : salon choisi; sortie : Promise résolue après la tentative de rejoindre une place aléatoire. */
 	async function rejoindreSalon(salonChoisi) {
-		const joueurExistant = salonChoisi.players.find((player) => player.id_compte === utilisateur.id);
+		const idS = idSalon(salonChoisi);
+		const joueurExistant = salonChoisi.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
+
+		let data;
 		if (joueurExistant) {
-			const data = await appeler("/addPlayer", {
+			data = await appeler("/addPlayer", {
 				method: "POST",
-				body: JSON.stringify({ salonId: idSalon(salonChoisi), seat_index: joueurExistant.seat_index }),
+				body: JSON.stringify({ salonId: idS, seat_index: joueurExistant.seat_index }),
 			});
-			if (data?.salon) setSalon(normaliserSalon(data.salon));
-			return;
+		} else {
+			const siegesOccupes = new Set(salonChoisi.players.map((player) => player.seat_index));
+			const siegesLibres = Array.from({ length: 6 }, (_, index) => index)
+				.filter((index) => !siegesOccupes.has(index));
+			if (siegesLibres.length === 0) {
+				setMessage("Ce salon est complet.");
+				await appeler("/salons");
+				return;
+			}
+			const siegeAleatoire = siegesLibres[Math.floor(Math.random() * siegesLibres.length)];
+			data = await appeler("/addPlayer", {
+				method: "POST",
+				body: JSON.stringify({ salonId: idS, seat_index: siegeAleatoire }),
+			});
 		}
 
-		const siegesOccupes = new Set(salonChoisi.players.map((player) => player.seat_index));
-		const siegesLibres = Array.from({ length: 6 }, (_, index) => index)
-			.filter((index) => !siegesOccupes.has(index));
-		if (siegesLibres.length === 0) {
-			setMessage("Ce salon est complet.");
-			await appeler("/salons");
-			return;
-		}
-		const siegeAleatoire = siegesLibres[Math.floor(Math.random() * siegesLibres.length)];
-		const data = await appeler("/addPlayer", {
-			method: "POST",
-			body: JSON.stringify({ salonId: idSalon(salonChoisi), seat_index: siegeAleatoire }),
-		});
 		if (data?.salon) {
-			setSalon(normaliserSalon(data.salon));
+			const salonNormalise = normaliserSalon(data.salon);
+			setSalon(salonNormalise);
+			// Rejoindre le salon Socket.io pour la synchro en direct
+			const socket = connecterSocket();
+			socket.emit("rejoindre_salon", idS);
 			await appeler("/salons");
 		}
 	}
@@ -144,6 +196,7 @@ function Blackjack({ setIsLoggedIn }) {
 				id_compte: player.id_compte,
 				seat_index: player.seat_index,
 				hands: player.hands ?? [],
+				resultats: player.resultats ?? [],
 				activeHand: player.activeHand ?? 0,
 				bet: player.bet ?? 0,
 				status: player.status ?? "waiting",
@@ -162,10 +215,19 @@ function Blackjack({ setIsLoggedIn }) {
 		if (!data?.gameStatus) return false;
 		const salonMisAJour = { ...salon, ...data.gameStatus, salonId: salon.salonId };
 		const nouveauPlan = planifierAnimations(salon, salonMisAJour);
+
 		setSalon(salonMisAJour);
 		if (data.solde !== undefined && data.solde !== null) setSolde(data.solde);
 		setSabot(nextDeck);
 		setResultats(prochainsResultats);
+
+		// Diffuser la mise à jour à l'autre joueur via Socket.io
+		const socket = connecterSocket();
+		socket.emit("action_jeu", {
+			codeSalon: salon.salonId,
+			salonMaj: salonMisAJour
+		});
+
 		window.clearTimeout(minuterieAnimation.current);
 		if (nouveauPlan.duree > 0) {
 			setPlanAnimation(nouveauPlan);
@@ -189,7 +251,7 @@ function Blackjack({ setIsLoggedIn }) {
 			setMessage("La mise ne peut pas dépasser votre solde.");
 			return;
 		}
-		const players = salon.players.map((player) => player.id_compte === utilisateur.id
+		const players = salon.players.map((player) => memeIdentifiant(player.id_compte, idUtilisateur)
 			? { ...player, bet: Number(mise) }
 			: player);
 		await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
@@ -204,12 +266,14 @@ function Blackjack({ setIsLoggedIn }) {
 		}
 		const cartes = melangerSabot();
 		const players = salon.players.map((player) => {
-			if (player.bet <= 0) return { ...player, hands: [], activeHand: 0, status: "waiting", isTurn: false };
-			const cartesInitiales = [cartes.pop(), cartes.pop()];
-			const naturel = totalMain(cartesInitiales) === 21;
+			if (player.bet <= 0) return { ...player, hand: [], hands: [], resultats: [], activeHand: 0, status: "waiting", isTurn: false };
+			const hand = [cartes.pop(), cartes.pop()];
+			const naturel = totalMain(hand) === 21;
 			return {
 				...player,
-				hands: [{ cartes: cartesInitiales, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				hand,
+				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				resultats: [],
 				activeHand: 0,
 				status: naturel ? "blackjack" : "playing",
 				isTurn: false,
@@ -231,13 +295,20 @@ function Blackjack({ setIsLoggedIn }) {
 		else sauvegarder(etat, cartes, {});
 	}
 
-	/** Entrées : état de manche, cartes restantes et résultats; sortie : Promise résolue après règlement et retour à l’attente. */
+	/** Entrées : état de manche, cartes restantes et résultats; sortie : Promise résolue après l’enregistrement des résultats. */
 	async function terminer(etat, cartesRestantes, resultatsActuels) {
 		const players = etat.players.map((player) => ({ ...player, isTurn: false }));
-		const joueursRestants = players.some((player) => mainsJoueur(player).some((main) => ["playing", "stand", "blackjack"].includes(main.status)));
+		//const joueursRestants = players.some((player) => mainsJoueur(player).some((main) => ["playing", "stand", "blackjack"].includes(main.status)));
+		//let dealerHand = [...etat.dealer_hand];
+		// une fois le bouton rester est clicker il n'entre pas en boucle vu que joueursRestants deviens false
+		//if (joueursRestants) {
+		//	while (totalMain(dealerHand) < 17 && cartesRestantes.length) dealerHand.push(cartesRestantes.pop());
+		//}
+
+		// il permet entrer directerment dans boucle avec les restriction.
 		let dealerHand = [...etat.dealer_hand];
-		if (joueursRestants) {
-			while (totalMain(dealerHand) < 17 && cartesRestantes.length) dealerHand.push(cartesRestantes.pop());
+		while (totalMain(dealerHand) < 17 && cartesRestantes.length) {
+			dealerHand.push(cartesRestantes.pop());
 		}
 		const totalCroupier = totalMain(dealerHand);
 		const blackjackCroupier = dealerHand.length === 2 && totalCroupier === 21;
@@ -259,16 +330,37 @@ function Blackjack({ setIsLoggedIn }) {
 			...etat,
 			status: "finished",
 			dealer_hand: dealerHand,
-			players: players.map((player) => ({ ...player, status: player.bet > 0 ? "finished" : "waiting", isTurn: false })),
+			players: players.map((player) => ({
+				...player,
+				resultats: prochainsResultats[player.seat_index] ?? [],
+				status: player.bet > 0 ? "finished" : "waiting",
+				isTurn: false,
+			})),
 			currentTurnSeat: SIEGE_INACTIF,
 		};
-		if (!await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats)) return;
-		const attenteMises = {
-			...partieTerminee,
+		await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats);
+	}
+
+	/** Entrée : aucune; sortie : Promise résolue après la réinitialisation partagée du salon. */
+	async function nouvelleManche() {
+		if (!salon || salon.status !== "finished") return;
+		const etat = {
+			...salon,
 			status: "waiting",
-			players: partieTerminee.players.map((player) => ({ ...player, bet: 0, status: "waiting", isTurn: false, activeHand: 0 })),
+			dealer_hand: [],
+			currentTurnSeat: SIEGE_INACTIF,
+			players: salon.players.map((player) => ({
+				...player,
+				hand: [],
+				hands: [],
+				resultats: [],
+				activeHand: 0,
+				bet: 0,
+				status: "waiting",
+				isTurn: false,
+			})),
 		};
-		await sauvegarder(attenteMises, cartesRestantes, prochainsResultats);
+		if (await sauvegarder(etat, sabot, {})) setResultats({});
 	}
 
 	/** Entrée : action hit, stand ou split; sortie : Promise résolue après l’action et l’avancement du tour. */
@@ -279,7 +371,7 @@ function Blackjack({ setIsLoggedIn }) {
 			...player,
 			hands: mainsJoueur(player).map((main) => ({ ...main, cartes: [...main.cartes] })),
 		}));
-		const joueur = players.find((player) => player.id_compte === utilisateur.id);
+		const joueur = players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 		const mains = joueur.hands;
 		const activeHand = joueur.activeHand ?? 0;
 		const main = mains[activeHand];
@@ -339,17 +431,17 @@ function Blackjack({ setIsLoggedIn }) {
 	/** Entrée : aucune; sortie : Promise résolue après la mise à jour du salon et le retour à la liste. */
 	async function quitterSalon() {
 		if (!salon) return;
-		const joueur = salon.players.find((player) => player.id_compte === utilisateur.id);
+		const joueur = salon.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 
 		if (salon.status === "waiting" && joueur) {
 			const joueurs = salon.players
-				.filter((player) => player.id_compte !== utilisateur.id)
+				.filter((player) => !memeIdentifiant(player.id_compte, idUtilisateur))
 				.map((player) => ({ ...player, isTurn: false }));
 			const etat = { ...salon, players: joueurs, currentTurnSeat: SIEGE_INACTIF };
 			if (!await sauvegarder(etat)) return;
 		} else if (salon.status === "playing" && joueur) {
 			const joueurs = salon.players.map((player) => (
-				player.id_compte === utilisateur.id && player.status === "playing"
+				memeIdentifiant(player.id_compte, idUtilisateur) && player.status === "playing"
 					? { ...player, status: "stand", isTurn: false }
 					: { ...player }
 			));
@@ -398,7 +490,7 @@ function Blackjack({ setIsLoggedIn }) {
 		};
 	}, [salon?.salonId, salon?.status, salon?.players]);
 
-	const monJoueur = salon?.players.find((player) => player.id_compte === utilisateur.id);
+	const monJoueur = salon?.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 	const enAttente = salon?.status === "waiting";
 	const monTour = salon?.status === "playing" && monJoueur?.isTurn;
 	const mainsDuJoueur = monJoueur ? mainsJoueur(monJoueur) : [];
@@ -412,7 +504,6 @@ function Blackjack({ setIsLoggedIn }) {
 		&& solde !== null
 		&& solde >= Number(monJoueur.bet),
 	);
-	/** Entrée : montant numérique; sortie : montant formaté en devise. */
 	const formatArgent = (montant) => `${Number(montant).toFixed(2)} $`;
 
 	return (
@@ -444,7 +535,7 @@ function Blackjack({ setIsLoggedIn }) {
 									<td>{salonDisponible.players.length} / 6</td>
 									<td>{placesLibres}</td>
 									<td>{estDealer ? estCreateur && <button className="button is-small is-danger" onClick={() => fermerSalon(salonDisponible)} disabled={chargement || salonDisponible.status === "playing"} aria-label={`Fermer le salon ${idSalon(salonDisponible)}`}><span className="icon"><i className="fas fa-times" /></span><span>Fermer</span></button> : (() => {
-										const joueurExistant = salonDisponible.players.some((player) => player.id_compte === utilisateur.id);
+										const joueurExistant = salonDisponible.players.some((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 										return <button className="button is-small is-warning" onClick={() => rejoindreSalon(salonDisponible)} disabled={chargement || (!joueurExistant && (salonDisponible.status !== "waiting" || placesLibres === 0))}>{joueurExistant ? "Revenir au salon" : "Choisir ce salon"}</button>;
 									})()}</td>
 								</tr>;
@@ -467,21 +558,68 @@ function Blackjack({ setIsLoggedIn }) {
 					<div className="bj-mains bj-zone-joueur">
 						{salon.players.map((player) => {
 							const mains = mainsJoueur(player);
-							const issues = Array.isArray(resultats[player.seat_index])
-								? resultats[player.seat_index]
-								: resultats[player.seat_index] ? [resultats[player.seat_index]] : [];
-							const joueurLabel = player.id_compte === utilisateur.id ? "Vous" : `Siège ${player.seat_index + 1}`;
+							const issues = Array.isArray(player.resultats) && player.resultats.length > 0
+								? player.resultats
+								: Array.isArray(resultats[player.seat_index])
+									? resultats[player.seat_index]
+									: resultats[player.seat_index] ? [resultats[player.seat_index]] : [];
+
+							// Détermine l'étiquette : Vous vs Nom/Email du Joueur
+							const estMonJoueur = memeIdentifiant(player.id_compte, idUtilisateur);
+							const nomJoueur = player.nom || player.email || `Joueur ${player.seat_index + 1}`;
+							const joueurLabel = estMonJoueur ? "Vous" : nomJoueur;
+
+							// Si le joueur n'a pas encore de cartes
 							if (mains.length === 0) {
-								return <div key={player.seat_index} className="bj-main"><p className="has-text-weight-semibold">{joueurLabel} · En attente · Mise {formatArgent(player.bet ?? 0)}</p></div>;
+								return (
+									<div key={player.seat_index} className="bj-main">
+										<p className="has-text-weight-semibold">
+											Siège {player.seat_index + 1} ({joueurLabel}) · En attente · Mise {formatArgent(player.bet ?? 0)}
+										</p>
+									</div>
+								);
 							}
+
+							// Si le joueur a des cartes, on les affiche pour tout le monde
 							return mains.map((main, index) => {
 								const issue = issues[index];
-								const delais = planAnimation?.players.find((entry) => entry.seat === player.seat_index)?.mains[index] ?? [];
-								return <div key={`${player.seat_index}-${index}`} className={`bj-main ${player.isTurn && (player.activeHand ?? 0) === index ? "is-active" : ""}`}>
-									<div className="bj-cartes">{main.cartes.map((carte, carteIndex) => <Carte key={`${carteIndex}-${carte.rang}-${carte.couleur}`} carte={carte} delai={delais[carteIndex] ?? null} />)}</div>
-									<p className="has-text-weight-semibold">{joueurLabel}{mains.length > 1 ? ` · Main ${index + 1}` : ""} · {totalMain(main.cartes)} · Mise {formatArgent(main.mise ?? player.bet ?? 0)}</p>
-									{issue && <span className={`tag bj-resultat is-medium ${issue === "gagne" || issue === "blackjack" ? "is-success" : issue === "egalite" ? "is-light bj-egalite" : "is-danger bj-perte"}`}>{issue === "blackjack" ? "Blackjack" : issue === "gagne" ? "Gagné" : issue === "egalite" ? "Égalité · mise rendue" : "Perdu"}</span>}
-								</div>;
+								const delais = planAnimation?.players.find((entry) => entry.seat === player.seat_index)?.cartes ?? [];
+								const tourActif = player.isTurn && (player.activeHand ?? 0) === index;
+
+								return (
+									<div
+										key={`${player.seat_index}-${index}`}
+										className={`bj-main ${tourActif ? "is-active" : ""}`}
+									>
+										<div className="bj-cartes">
+											{main.cartes
+												.filter(carte => carte !== null && carte !== undefined)
+												.map((carte, carteIndex) => (
+													<Carte
+														key={`${carteIndex}-${carte.rang ?? 'inconnu'}-${carte.couleur ?? 'inconnue'}`}
+														carte={carte}
+														delai={delais[carteIndex] ?? null}
+													/>
+												))}
+										</div>
+										<p className="has-text-weight-semibold">
+											Siège {player.seat_index + 1} ({joueurLabel})
+											{mains.length > 1 ? ` · Main ${index + 1}` : ""}
+											· Total: {totalMain(main.cartes)}
+											· Mise: {formatArgent(main.mise ?? player.bet ?? 0)}
+										</p>
+										{issue && (
+											<span className={`tag bj-resultat is-medium ${issue === "gagne" || issue === "blackjack"
+												? "is-success"
+												: issue === "egalite"
+													? "is-light bj-egalite"
+													: "is-danger bj-perte"
+												}`}>
+												{issue === "blackjack" ? "Blackjack" : issue === "gagne" ? "Gagné" : issue === "egalite" ? "Égalité" : "Perdu"}
+											</span>
+										)}
+									</div>
+								);
 							});
 						})}
 					</div>
@@ -510,7 +648,19 @@ function Blackjack({ setIsLoggedIn }) {
 						<button className="button is-light is-medium" onClick={() => actionJoueur("stand")} disabled={chargement || enAnimation}><span className="icon"><i className="fas fa-hand-paper" /></span><span>Rester</span></button>
 						{peutDiviser && <button className="button is-light is-medium" onClick={() => actionJoueur("split")} disabled={chargement || enAnimation}><span className="icon"><i className="fas fa-columns" /></span><span>Séparer</span></button>}
 					</div>}
-					{salon.status === "finished" && <p className="has-text-centered mt-5">Manche terminée. Les résultats sont affichés ci-dessus.</p>}
+					{salon.status === "finished" && (
+						<div className="has-text-centered mt-5">
+							<p className="mb-3">Manche terminée. Les résultats sont affichés ci-dessus.</p>
+							{/* Bouton de réinitialisation pour lancer une nouvelle manche sans bug de cache */}
+							<button
+								className="button is-primary is-medium"
+								onClick={nouvelleManche}
+								disabled={chargement}
+							>
+								Nouvelle Manche
+							</button>
+						</div>
+					)}
 				</div>}
 
 				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}

@@ -177,7 +177,7 @@ router.get('/salons', authentifier, async (req, res) => {
 
 //Route pour que un joueur puis rejoindre un salon il doit avoir le role player
 router.post('/addPlayer', authentifier, async (req, res) => {
-    
+
     const { salonId, seat_index } = req.body;
     const role = req.user?.role?.toLowerCase();
 
@@ -200,6 +200,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
 
         const joueurExistant = salon.players.find((player) => player.id_compte.toString() === req.user.id.toString());
         if (joueurExistant) {
+            salon.players.sort((a, b) => a.seat_index - b.seat_index);
             return res.status(200).json({ message: 'Joueur reconnecté au salon.', salon });
         }
 
@@ -207,7 +208,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
         if (salon.players.length >= 6) {
             return res.status(409).json({ message: 'Ce salon est complet.' });
         }
-        
+
         // Un joueur ne peut pas rejoindre un partie au milieur d'une manche
         if (salon.status !== 'waiting') {
             return res.status(409).json({ message: 'Ce salon n’accepte pas de joueurs pour le moment.' });
@@ -227,6 +228,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
             status: 'waiting',
             isTurn: false
         });
+        salon.players.sort((a, b) => a.seat_index - b.seat_index);
         salon.updated_at = new Date();
         await salon.save();
 
@@ -245,7 +247,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
     //if (role !== 'dealer' && role !== 'admin') {
     //    return res.status(403).json({ message: "Accès refusé. Seul un dealer peut mettre à jour la partie." });
     //}
- 
+
     const hasStatus = status !== undefined;
     const hasDealerHand = dealer_hand !== undefined;
     const hasPlayers = players !== undefined;
@@ -253,7 +255,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
 
     // Juste une de des variables plus haut a besoin d'être changer
     if (!salonId || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
-        || (hasStatus && !['waiting', 'playing','finished'].includes(status))
+        || (hasStatus && !['waiting', 'playing', 'finished'].includes(status))
         || (hasDealerHand && !Array.isArray(dealer_hand))
         || (hasPlayers && !Array.isArray(players))
         || (hasCurrentTurnSeat && (!Number.isInteger(currentTurnSeat) || currentTurnSeat < 0))) {
@@ -278,6 +280,26 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
         const nextCurrentTurnSeat = hasCurrentTurnSeat
             ? currentTurnSeat
             : salon.currentTurnSeat;
+        const siegesVus = new Set();
+        const comptesVus = new Set();
+        const joueursValides = nextPlayers.every((player) => {
+            if (!player || !Number.isInteger(player.seat_index) || player.seat_index < 0
+                || !player.id_compte || siegesVus.has(player.seat_index)
+                || comptesVus.has(player.id_compte.toString())) {
+                return false;
+            }
+            siegesVus.add(player.seat_index);
+            comptesVus.add(player.id_compte.toString());
+            const joueurEnregistre = salon.players.find((joueur) => joueur.seat_index === player.seat_index);
+            return joueurEnregistre?.id_compte?.toString() === player.id_compte.toString();
+        });
+
+        if (!joueursValides) {
+            return res.status(400).json({
+                message: 'Chaque joueur doit conserver son compte et son siège, sans siège dupliqué.'
+            });
+        }
+
         const hasValidTurnState = nextPlayers.every((player) => (
             player.isTurn === (player.seat_index === nextCurrentTurnSeat)
         ));
@@ -289,6 +311,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
         }
 
         const mouvementsCompte = [];
+        let salonMisAJour;
         try {
             const demarrePartie = salon.status === 'waiting'
                 && (status === 'playing' || status === 'finished')
@@ -358,13 +381,25 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
                     }
                 }
             }
+            const updateData = {
+                updated_at: new Date()
+            };
 
-            if (hasDealerHand) salon.dealer_hand = dealer_hand;
-            if (hasStatus) salon.status = status;
-            if (hasPlayers) salon.players = players;
-            if (hasCurrentTurnSeat) salon.currentTurnSeat = currentTurnSeat;
-            salon.updated_at = new Date();
-            await salon.save();
+            if (hasDealerHand) updateData.dealer_hand = dealer_hand;
+            if (hasStatus) updateData.status = status;
+            if (hasPlayers) updateData.players = [...players].sort((a, b) => a.seat_index - b.seat_index);
+            if (hasCurrentTurnSeat) updateData.currentTurnSeat = currentTurnSeat;
+
+            // 2. On applique la mise à jour atomique en base de données
+            salonMisAJour = await Salon.findByIdAndUpdate(
+                salon._id || salon.id,
+                updateData,
+                { new: true, runValidators: true }
+            );
+            if (!salonMisAJour) {
+                throw new Error('Le salon n’a pas pu être rechargé après sa mise à jour.');
+            }
+
         } catch (error) {
             for (const entree of mouvementsCompte.reverse()) {
                 await Compte.findByIdAndUpdate(entree.id_compte, { $inc: { montant: -entree.montant } });
@@ -378,14 +413,17 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
 
         const compteActuel = await Compte.findById(req.user.id).select('montant');
 
+        // Utilise salonMisAJour s'il existe, sinon retombe sur l'objet salon initial
+        const salonFinal = salonMisAJour || salon;
+
         return res.status(200).json({
             message: 'État de la partie mis à jour.',
             solde: compteActuel?.montant ?? null,
             gameStatus: {
-                status: salon.status,
-                dealer_hand: salon.dealer_hand,
-                players: salon.players,
-                currentTurnSeat: salon.currentTurnSeat
+                status: salonFinal.status,
+                dealer_hand: salonFinal.dealer_hand,
+                players: [...salonFinal.players].sort((a, b) => a.seat_index - b.seat_index),
+                currentTurnSeat: salonFinal.currentTurnSeat
             }
         });
     } catch (error) {

@@ -5,6 +5,7 @@ const playerInSalonSchema = new mongoose.Schema({
   id_compte: { type: mongoose.Schema.Types.ObjectId, ref: 'Compte', required: true },
   seat_index: { type: Number, required: true },
   hands: { type: Array, default: [] },
+  resultats: { type: Array, default: [] },
   activeHand: { type: Number, default: 0 },
   bet: { type: Number, default: 0 },
   status: { type: String, default: 'waiting' }, // waiting, finished
