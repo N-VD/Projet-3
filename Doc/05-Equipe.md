@@ -60,7 +60,7 @@ Structure
 
 
 
-## Contribution individuelle 
+## Contribution individuelle (Sprint 1)
 [Contribution](https://github.com/N-VD/Projet-3/issues?q=is%3Aissue+state%3Aclosed)
 | **Développeur** | **Description** |
 |:---|:---|
@@ -70,3 +70,14 @@ Structure
 | Daniel | S'est occupé de la connexion de la base de données avec Docker et a travaillé sur les tests unitaires. |
 | Kerian | S'est occupé du jeu de blackjack dans l'application (connexion à la partie et déroulement). |
 
+
+
+## Contribution individuelle (Sprint 2)
+[Contribution](https://github.com/N-VD/Projet-3/issues?q=is%3Aissue+state%3Aclosed)
+| **Développeur** | **Description** |
+|:---|:---|
+| Jérome | Il s'est occupé de finaliser l'IA pour reconnaitre les cartes, ainsi que l'impémentation de la connexion avec OAuth2 de github |
+| Raphaël | Il a fait l'affichage de l'historique, réglé l'ajout de d'argent, ajouté la modification du mot de passe et du nom d'utilisateur |
+| Andy | Il s'est occupé de pouvoir visionner les parties en tant qu'invité ou en mode spectateur |
+| Daniel | Il a implémenté les websockets pour les parties et a fait en sorte de bloquer toutes attaques d'injection SQL et XSS |
+| Kerian | Il a réglé comment les transactions étaient caluclées lors de la partie, de plus que de faire un petit clean up des fichiers |
