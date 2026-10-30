@@ -187,7 +187,7 @@ router.post('/addPlayer', authentifier, async (req, res) => {
     }
 
     // S'assurer que le salon existe belle et bien
-    if (!salonId || !Number.isInteger(seat_index) || seat_index < 0) {
+    if (!salonId ||!mongoose.isValidObjectId(salonId)|| !Number.isInteger(seat_index) || seat_index < 0) {
         return res.status(400).json({ message: 'salonId et seat_index sont obligatoires.' });
     }
 
@@ -254,7 +254,7 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
     const hasCurrentTurnSeat = currentTurnSeat !== undefined;
 
     // Juste une de des variables plus haut a besoin d'être changer
-    if (!salonId || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
+    if (!salonId ||!mongoose.isValidObjectId(salonId) || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
         || (hasStatus && !['waiting', 'playing', 'finished'].includes(status))
         || (hasDealerHand && !Array.isArray(dealer_hand))
         || (hasPlayers && !Array.isArray(players))

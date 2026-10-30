@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 //const { Compte } = require('../tempDB');
 const {authentifier , validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp} = require('../fonctionsCommunes');
 const Compte = require('../models/compte');//ajout 
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -64,6 +65,10 @@ router.post('/login', async (req, res) => {
     // L'identifiant peut être le nom d'utilisateur ou le courriel
     const identifiant = req.body.identifiant ?? req.body.nom;
     const { password } = req.body;
+    // contre le Injection NoSQL
+    if (typeof identifiant !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({ message: MESSAGE_CONNEXION_INVALIDE });
+    }
 
     const validation = validerChamps({ identifiant, password });
     if (validation !== true) {
@@ -86,6 +91,10 @@ router.delete('/deleteCompte', authentifier, async (req, res) => {
     // Vérifier si l'utilisateur est un administrateur
     if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
         return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas autorisé à supprimer des comptes." });
+    }
+    //validation contre les injection noSQL
+    if(!id||!mongoose.isValidObjectID(id)){
+        return res.status(400).json({message:"Idendifiant de compte invalide"});
     }
     
     // Vérifier si le compte existe
