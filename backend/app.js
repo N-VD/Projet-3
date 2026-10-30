@@ -10,6 +10,8 @@ try {
 DB_PASSWORD=bellevibe_casino
 DB_NAME=myapp
 PORT=3000
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 `;
         fs.writeFileSync(envPath, defaultEnvContent, 'utf8');
         console.log(" Fichier .env absent : créé automatiquement à la racine du projet !");
@@ -30,6 +32,7 @@ const initComptesAutomatiques = require('./initComptes');
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
 const creationSalonRouter = require('./Routes/Salon');
+const oauthGithubRouter = require('./Routes/OAuthGithub');
 
 
 
@@ -63,6 +66,7 @@ app.get("/", (req, res) => {
 app.use(comptesRouter);
 app.use(portefeuilleRouter);
 app.use(creationSalonRouter);
+app.use(oauthGithubRouter);
 
 app.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
