@@ -59,12 +59,4 @@ function validerAge(dateNaissance) {
     return null;
 }
 
-function genererToken(compte) {
-    return jwt.sign(
-        { id: compte._id, nom: compte.nom, role: compte.role },
-        jwt_mdp,
-        { expiresIn: '1h' }
-    );
-}
-
-module.exports = {authentifier, validerChamps, validerMotDePasse, validerAge, genererToken, jwt, jwt_mdp}
+module.exports = {authentifier, validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp}

@@ -12,8 +12,6 @@ try {
 DB_PASSWORD=bellevibe_casino
 DB_NAME=myapp
 PORT=3000
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
 `;
         fs.writeFileSync(envPath, defaultEnvContent, 'utf8');
         console.log(" Fichier .env absent : créé automatiquement à la racine du projet !");
@@ -35,7 +33,6 @@ const initComptesAutomatiques = require('./initComptes');
 const comptesRouter = require('./Routes/Comptes');
 const portefeuilleRouter = require('./Routes/Portefeuille');
 const creationSalonRouter = require('./Routes/Salon');
-const oauthGithubRouter = require('./Routes/OAuthGithub');
 
 app.use(cors());
 app.use(express.json());
@@ -64,7 +61,6 @@ initialiserSocketServer(server);
 app.use(comptesRouter);
 app.use(portefeuilleRouter);
 app.use(creationSalonRouter);
-app.use(oauthGithubRouter);
 
 // 4. IMPORTANT : On écoute sur `server.listen` (et non `app.listen`) pour activer Express ET Socket.io sur le même port
 server.listen(port, () => {
