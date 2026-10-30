@@ -37,3 +37,40 @@
 - **Vélocité réelle :** 44 points.
 - **Récits abandonnés :** récit 19 (Voir les cartes distribuées, 8 points) : la fonctionnalité est implémentée, mais incomplète. Il est reporté au sprint 2.
 - **Pourquoi :** Puisque la création de l'IA python pour la détection des cartes était une technologie inconnue, nous avons sous-estimé l'amplitude du récit. Notre capacité était mal estimée. Le sprint 2 sera planifié avec la vélocité de 44, en y reportant le récit 19 et en retirant les récits déjà livrés.
+
+
+# Sprint 2
+
+## Planification (bloc du 19 octobre)
+
+**Objectif du sprint :** Première implémentation de Websockets ainsi que la continuation de l'IA python et de son implémentationa
+
+### Récits engagés
+
+| #  | Récit                         | Épique      | Points | Priorité | Ordre d'abandon |
+| -- | ------------------------------ | ------------ | ------ | --------- | --------------- |
+| 18 | Modification de mot de passe      | Comptes      | 2      | Must      | 7 (dernier)     |
+| 20 | Changer de nom d'utilisateur      | Comptes      | 2      | Must      | 6               |
+| 23 | Historique des transactions      | Portefeuille      | 2      | Must      | 4               |
+| 88 | Début des websockets | Autre    | 8      | Must      | 8               |
+| 103| Protection contre XSS et injection SQL  | Autre       | 3      | Must      | 5               |
+| 38 | Voir les cartes distribuées          | Blackjack | 8 | Must | ? |
+| 106| Implémentation OAuth2 Github         | Autre | 3 | Must | ? |
+| 32 | Passer de spectateur a joueur | Salon | 5 | Must | ? |
+| 92 | Double et fix règles split | Blackjack | 3 | Must | ? |
+
+
+**Total engagé :** 36 points
+**Responsable de la mêlée :** Jérôme Hudon
+
+> Note : la planification n'a pas été mise à jour après le début du sprint. La section ci-dessus reflète le plan initial du sprint 1 (récits 1, 2, 3, 9, 19, 21 et 22).
+
+## Bilan (remise du 30 octobre)
+
+- **Points engagés :** 36 (récits 1, 2, 3, 9, 19, 21 et 22).
+- **Points livrés :** 28, les récits 18,20,23,38,88,103,106 ont été complétés pour la saome de 28 points, et les récits 32 et 92 n'ont pas été complétés, donc 0 points sont alloués. 
+- **Vélocité réelle :** 30 points.
+- **Récits abandonnés :** récit 32 (Passer de spectateur à joueur, 5 points) : la fonctionnalité est implémentée, mais incomplète. Il est reporté au sprint 3.
+    récit 92 (Double et fix règles split, 3 points) : Le split est finalisé, mais la fonction de double n'est pas terminée. 
+  
+- **Pourquoi :** Puisque la création de l'IA python pour la détection des cartes était une technologie inconnue, nous avons sous-estimé l'amplitude du récit. Notre capacité était mal estimée. Le sprint 2 sera planifié avec la vélocité de 44, en y reportant le récit 19 et en retirant les récits déjà livrés.
