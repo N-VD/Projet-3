@@ -14,7 +14,7 @@ python -m pip install -r requirements.txt
 ## Lancer le projet
 
 ```powershell
-python "detection.py"
+python "recognition.py"
 ```
 
 ---

@@ -4,7 +4,7 @@ export default function AuthPopup({ isLoggedIn, isGuest, setIsGuest }) {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname.startsWith("/spectateur") || location.pathname.startsWith("/auth/");
+    const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname.startsWith("/spectateur");
     if (isLoggedIn || isGuest || isAuthPage) return null;
 
     function continueAsGuest() {
