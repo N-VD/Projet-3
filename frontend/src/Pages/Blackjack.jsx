@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { connecterSocket, deconnecterSocket } from "../services/socket.js";
+import { notifierSoldeMisAJour } from "../services/solde.js";
 import "./Blackjack.css";
 import {
 	API_URL,
@@ -16,7 +17,7 @@ function memeIdentifiant(premier, second) {
 	return premier != null && second != null && String(premier) === String(second);
 }
 
-function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
+function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSalons }) {
 	const utilisateur = lireUtilisateur();
 	const idUtilisateur = utilisateur.id ?? utilisateur._id;
 	const [mise, setMise] = useState(10);
@@ -46,28 +47,21 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		};
 	}, [setSalon]);
 
-	const salonRef = useRef(salon);
 	useEffect(() => {
-		salonRef.current = salon;
-	}, [salon]);
-
-	useEffect(() => {
-		lancementAutomatique.current = () => {
-			const salonActuel = salonRef.current;
-			if (!salonActuel) return;
-			distribuer();
-		};
-	}, []);
-
-	useEffect(() => {
+		let annule = false;
 		if (!localStorage.getItem("token")) {
-			setSolde(0);
-			return;
+			Promise.resolve().then(() => {
+				if (!annule) setSolde(0);
+			});
+			return () => {
+				annule = true;
+			};
 		}
 		const token = localStorage.getItem("token");
 		fetch(`${API_URL}/solde`, { headers: { Authorization: `Bearer ${token}` } })
 			.then(async (response) => {
 				const data = await response.json();
+				if (annule) return;
 				if (response.status === 401) {
 					localStorage.removeItem("token");
 					setIsLoggedIn(false);
@@ -76,6 +70,9 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 				if (response.ok) setSolde(data.solde);
 			})
 			.catch(() => { });
+		return () => {
+			annule = true;
+		};
 	}, [setIsLoggedIn]);
 
 	async function appeler(chemin, options = {}) {
@@ -138,7 +135,11 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		const salonMisAJour = { ...salon, ...data.gameStatus, salonId: salon.salonId };
 		const nouveauPlan = planifierAnimations(salon, salonMisAJour);
 		setSalon(salonMisAJour);
-		if (data.solde !== undefined && data.solde !== null) setSolde(data.solde);
+		if (data.solde !== undefined && data.solde !== null) {
+			setSolde(data.solde);
+			setSoldeGlobal(data.solde);
+			notifierSoldeMisAJour(data.solde);
+		}
 		setSabot(nextDeck);
 		setResultats(prochainsResultats);
 		const socket = connecterSocket();
@@ -169,6 +170,43 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 			? { ...player, bet: Number(mise) }
 			: player);
 		await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
+	}
+
+	async function terminer(etat, cartesRestantes, resultatsActuels) {
+		const players = etat.players.map((player) => ({ ...player, isTurn: false }));
+		let dealerHand = [...etat.dealer_hand];
+		while (totalMain(dealerHand) < 17 && cartesRestantes.length) {
+			dealerHand.push(cartesRestantes.pop());
+		}
+		const totalCroupier = totalMain(dealerHand);
+		const blackjackCroupier = dealerHand.length === 2 && totalCroupier === 21;
+		const prochainsResultats = { ...resultatsActuels };
+		for (const player of players) {
+			if (player.bet <= 0) continue;
+			prochainsResultats[player.seat_index] = mainsJoueur(player).map((main) => {
+				const totalJoueur = totalMain(main.cartes);
+				if (totalJoueur > 21) return "perdu";
+				if (main.naturel && blackjackCroupier) return "egalite";
+				if (main.naturel) return "blackjack";
+				if (blackjackCroupier) return "perdu";
+				if (totalCroupier > 21 || totalJoueur > totalCroupier) return "gagne";
+				if (totalJoueur === totalCroupier) return "egalite";
+				return "perdu";
+			});
+		}
+		const partieTerminee = {
+			...etat,
+			status: "finished",
+			dealer_hand: dealerHand,
+			players: players.map((player) => ({
+				...player,
+				resultats: prochainsResultats[player.seat_index] ?? [],
+				status: player.bet > 0 ? "finished" : "waiting",
+				isTurn: false,
+			})),
+			currentTurnSeat: SIEGE_INACTIF,
+		};
+		await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats);
 	}
 
 	function distribuer() {
@@ -208,42 +246,9 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		else sauvegarder(etat, cartes, {});
 	}
 
-	async function terminer(etat, cartesRestantes, resultatsActuels) {
-		const players = etat.players.map((player) => ({ ...player, isTurn: false }));
-		let dealerHand = [...etat.dealer_hand];
-		while (totalMain(dealerHand) < 17 && cartesRestantes.length) {
-			dealerHand.push(cartesRestantes.pop());
-		}
-		const totalCroupier = totalMain(dealerHand);
-		const blackjackCroupier = dealerHand.length === 2 && totalCroupier === 21;
-		const prochainsResultats = { ...resultatsActuels };
-		for (const player of players) {
-			if (player.bet <= 0) continue;
-			prochainsResultats[player.seat_index] = mainsJoueur(player).map((main) => {
-				const totalJoueur = totalMain(main.cartes);
-				if (totalJoueur > 21) return "perdu";
-				if (main.naturel && blackjackCroupier) return "egalite";
-				if (main.naturel) return "blackjack";
-				if (blackjackCroupier) return "perdu";
-				if (totalCroupier > 21 || totalJoueur > totalCroupier) return "gagne";
-				if (totalJoueur === totalCroupier) return "egalite";
-				return "perdu";
-			});
-		}
-		const partieTerminee = {
-			...etat,
-			status: "finished",
-			dealer_hand: dealerHand,
-			players: players.map((player) => ({
-				...player,
-				resultats: prochainsResultats[player.seat_index] ?? [],
-				status: player.bet > 0 ? "finished" : "waiting",
-				isTurn: false,
-			})),
-			currentTurnSeat: SIEGE_INACTIF,
-		};
-		await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats);
-	}
+	useEffect(() => {
+		lancementAutomatique.current = distribuer;
+	});
 
 	async function nouvelleManche() {
 		if (!salon || salon.status !== "finished") return;
@@ -367,8 +372,6 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 
 		setSalon(null);
 	}
-
-	lancementAutomatique.current = distribuer;
 
 	useEffect(() => {
 		const joueursEnAttente = salon?.status === "waiting" && salon.players.some((player) => player.bet > 0);
