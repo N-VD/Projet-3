@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 //const { Compte } = require('../tempDB');
 const {authentifier , validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp} = require('../fonctionsCommunes');
+const {genererToken} = require('../fonctionsCommunes');
 const Compte = require('../models/compte');//ajout 
 const mongoose = require('mongoose');
 
