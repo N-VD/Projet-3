@@ -14,6 +14,7 @@ import {
 	SIEGE_INACTIF,
 	totalMain,
 } from "./reglesBlackjack/outils.js";
+import TableCamera from "./TableCamera.jsx";
 
 function memeIdentifiant(premier, second) {
 	return premier != null && second != null && String(premier) === String(second);
@@ -549,6 +550,11 @@ function Blackjack({ setIsLoggedIn }) {
 					</div>
 					<h1 className="title has-text-centered">Blackjack</h1>
 					<p className="subtitle is-6 has-text-centered">Le blackjack paie 3 pour 2 · Le croupier tire jusqu'à 17</p>
+
+					<TableCamera
+						salonId={salon.salonId}
+						libelleSiege={(siege) => siege === monJoueur?.seat_index ? "Vous" : `Siège ${siege + 1}`}
+					/>
 
 					<div className="bj-zone bj-zone-croupier mb-6">
 						<p className="has-text-weight-semibold">Croupier · {salon.status === "playing" ? totalMain(salon.dealer_hand.slice(0, 1)) : totalMain(salon.dealer_hand)}</p>

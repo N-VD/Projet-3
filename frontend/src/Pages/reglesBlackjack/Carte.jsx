@@ -6,7 +6,7 @@ function Carte({ carte, delai = null, retournement = null }) {
 		<div
 			className={`bj-carte ${delai !== null ? "bj-distribuee" : ""} ${carte.cachee ? "est-cachee" : ""}`}
 			style={{ "--delai": `${delai ?? 0}s`, "--delai-retournement": `${retournement ?? 0}s` }}
-			aria-label={carte.cachee ? "Carte cachée" : `${carte.rang} de ${carte.couleur}`}
+			aria-label={carte.cachee ? "Carte cachée" : carte.couleur ? `${carte.rang} de ${carte.couleur}` : carte.rang}
 		>
 			<div className="bj-carte-interieur">
 				<div className={`bj-face bj-recto ${rouge ? "bj-rouge" : ""}`}>

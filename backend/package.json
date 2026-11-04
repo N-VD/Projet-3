@@ -16,6 +16,7 @@
     "start": "node app.js"
   },
   "devDependencies": {
+    "socket.io-client": "^4.8.4",
     "supertest": "^7.3.0"
   }
 }

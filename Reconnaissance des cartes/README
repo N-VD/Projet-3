@@ -17,6 +17,41 @@ python -m pip install -r requirements.txt
 python "detection.py"
 ```
 
+## Diffuser la table vers le site
+
+La vidéo et les mains lues sont envoyées au backend par Socket.IO, qui les relaie
+aux joueurs et spectateurs du salon (page du salon et mode spectateur).
+
+1. Dans le `.env` à la racine du projet, définir une clé secrète : `CLE_CAMERA=une_cle_secrete`
+2. Démarrer le backend, puis récupérer l'`_id` du salon filmé (ex. dans l'URL `/spectateur/<id>`).
+3. Lancer la détection :
+
+```powershell
+python "detection.py" --serveur http://localhost:3000 --salon <id du salon> --cle une_cle_secrete
+```
+
+Options : `--fps 10` pour réduire le débit, `--annote` pour diffuser l'image avec les cadres dessinés.
+
+### Lancement automatique à la création d'un salon
+
+Le backend roule dans Docker et n'a pas accès à la webcam. On lance donc une fois l'agent
+`agent_camera.py` sur la machine qui a la webcam (à la racine du projet) :
+
+```powershell
+npm run camera                       # agent seul, webcam 0
+npm run camera -- --cameras 0 1      # deux webcams = deux salons filmés en même temps
+npm run demarrer                     # docker compose up -d --build, puis l'agent (webcam 0)
+```
+
+L'agent ouvre une connexion au backend par webcam, un « poste » (namespace `/agentCamera`, clé
+`CLE_CAMERA` lue dans le `.env`). À chaque création de salon, le backend l'attribue à un poste libre,
+qui lance `detection.py --camera <index>`; à la suppression du salon, il le ferme et la webcam passe
+au prochain salon en attente. Plus de salons que de webcams : les salons en trop attendent.
+On peut aussi lancer un agent sur un autre ordi (`--serveur http://<ip du backend>:3000`).
+
+Placement de la caméra : le haut de l'image (40 %) est la zone du croupier; le bas est
+découpé en 6 sièges de gauche à droite (réglable dans `backend/jeux/tableCamera.js`).
+
 ---
 
 ## Désactiver le venv

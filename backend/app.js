@@ -14,6 +14,7 @@ DB_NAME=myapp
 PORT=3000
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
+CLE_CAMERA=changez_moi_camera
 `;
         fs.writeFileSync(envPath, defaultEnvContent, 'utf8');
         console.log(" Fichier .env absent : créé automatiquement à la racine du projet !");

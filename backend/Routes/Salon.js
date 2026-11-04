@@ -5,6 +5,7 @@ const Salon = require('../models/salon');
 const Compte = require('../models/compte');
 const Transaction = require('../models/transaction');
 const { retourJoueur, valeurMain } = require('../jeux/reglementSalon');
+const { demarrerCamera, arreterCamera } = require('../sockets/agentCamera');
 const router = express.Router();
 
 
@@ -152,6 +153,9 @@ router.post('/createSalon', authentifier, async (req, res) => {
             players: [],
             currentTurnSeat: 0
         });
+
+        // Ouvre la caméra de la table réelle pour ce salon
+        demarrerCamera(salon._id);
 
         return res.status(201).json({ message: 'Salon créé', salon })
     } catch (error) {
@@ -465,6 +469,7 @@ router.delete('/deleteSalon', authentifier, async (req, res) => {
         }
 
         await Salon.findByIdAndDelete(salonId);
+        arreterCamera(salonId);
 
         return res.status(200).json({ message: 'Salon supprimé.', salon });
     } catch (error) {

@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "camera": "cd \"Reconnaissance des cartes\" && .venv\\Scripts\\python.exe agent_camera.py",
+    "demarrer": "docker compose up -d --build && npm run camera"
+  },
   "dependencies": {
     "socket.io": "^4.8.4",
     "socket.io-client": "^4.8.4"

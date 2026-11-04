@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import "./Blackjack.css";
 import { API_URL, Carte } from "./reglesBlackjack/outils.js";
+import TableCamera from "./TableCamera.jsx";
 
 const LIBELLES_STATUT = { waiting: "En attente", playing: "En cours", finished: "Terminée" };
 const LIBELLES_RESULTAT = { blackjack: "Blackjack", gagne: "Gagné", egalite: "Égalité · mise rendue", perdu: "Perdu" };
@@ -80,6 +81,11 @@ function SpectateurTable() {
 					</div>
 					<h1 className="title has-text-centered">Blackjack</h1>
 					<p className="subtitle is-6 has-text-centered">Le blackjack paie 3 pour 2 · Le croupier tire jusqu'à 17</p>
+
+					<TableCamera
+						salonId={id}
+						libelleSiege={(siege) => salon.players.find((joueur) => joueur.seat_index === siege)?.nom ?? `Siège ${siege + 1}`}
+					/>
 
 					<div className="bj-zone bj-zone-croupier mb-6">
 						<p className="has-text-weight-semibold">Croupier · {salon.dealer_hand.total}</p>

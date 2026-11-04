@@ -26,13 +26,11 @@ Nouveau dans la v5 :
     (une main en escalier = une main de blackjack).
   - Valeur de chaque main calculee selon les regles du blackjack
     (as = 1 ou 11, figures = 10), avec soft / blackjack / bust.
-  - Envoi des mains en JSON (POST) vers l'API d'un serveur web, dans un
-    thread a part pour ne jamais bloquer la camera. Envoi seulement quand
-    une main change.
+  - Diffusion de la video (JPEG) et des mains vers le backend par Socket.IO,
+    dans un thread a part pour ne jamais bloquer la camera. Les mains ne
+    sont envoyees que quand elles changent.
 
-    python detection_v6.py --api http://localhost:5000/api/mains
-
-  Pour tester sans vrai serveur : python serveur_test.py (affiche ce qu'il recoit)
+    python detection.py --serveur http://localhost:3000 --salon <id du salon> --cle <CLE_CAMERA>
 
 --- Notes de la v4 ---
 
@@ -65,11 +63,8 @@ MODE DETECTION
 import argparse
 import json
 import os
-import queue
 import threading
 import time
-import urllib.error
-import urllib.request
 from collections import deque, Counter
 
 import cv2
@@ -819,54 +814,110 @@ def decrire_main(numero, pistes_main):
 
 
 # ---------------------------------------------------------------------------
-# Envoi vers l'API
+# Diffusion vers le serveur (Socket.IO)
 # ---------------------------------------------------------------------------
 
-class EnvoyeurAPI:
-    """Envoie l'etat des mains en POST JSON dans un thread separe.
-    - n'envoie que quand quelque chose a change (cartes, valeurs)
-    - si le serveur est lent ou coupe, la camera continue normalement ;
-      seul le DERNIER etat en attente est envoye (pas d'accumulation)."""
+class DiffuseurTable:
+    """Envoie la video (JPEG) et l'etat des mains au backend par Socket.IO,
+    dans un thread separe pour ne jamais bloquer la camera.
+    - video : au plus `fps` images/s, redimensionnees a `largeur` px ;
+      si le reseau est lent, seule la DERNIERE image est envoyee.
+    - mains : envoyees seulement quand quelque chose change, positions
+      converties en 0..1 pour ne pas dependre de la resolution de la camera.
+    Le serveur relaie les deux aux clients du salon (backend/tempsReel.js)."""
 
-    def __init__(self, url, timeout=2.0, entetes=None):
+    def __init__(self, url, salon_id, cle, fps=15, largeur=640, qualite=70):
+        import socketio   # importe ici : pas necessaire pour la calibration
+
         self.url = url
-        self.timeout = timeout
-        self.entetes = {"Content-Type": "application/json"}
-        self.entetes.update(entetes or {})
-        self.file = queue.Queue(maxsize=1)
-        self.dernier_envoye = None
-        self.statut = "en attente"
+        self.auth = {"cle": cle, "salon": salon_id}
+        self.intervalle = 1 / fps
+        self.largeur = largeur
+        self.qualite = qualite
+        self.verrou = threading.Lock()
+        self.reveil = threading.Event()
+        self.frame_en_attente = None
+        self.cartes_en_attente = None
+        self.dernier_frame = 0.0
+        self.derniere_signature = None
+        self.dernier_message_cartes = None
+        self.statut = "connexion..."
+
+        self.sio = socketio.Client(reconnection=True)
+        self.sio.on("connect", self._connecte, namespace="/camera")
+        self.sio.on("disconnect", self._deconnecte, namespace="/camera")
+        self.sio.on("connect_error", self._refuse, namespace="/camera")
         threading.Thread(target=self._boucle, daemon=True).start()
 
-    def publier(self, mains):
-        # Ne compare que ce qui compte (pas la position qui bouge de 1 px)
-        signature = json.dumps([(m["cartes"], m["nb_cartes_detectees"]) for m in mains])
-        if signature == self.dernier_envoye:
-            return
-        self.dernier_envoye = signature
+    def _connecte(self):
+        self.statut = "connecte"
+        # Le serveur a peut-etre redemarre : on lui renvoie l'etat actuel
+        with self.verrou:
+            if self.cartes_en_attente is None:
+                self.cartes_en_attente = self.dernier_message_cartes
+        self.reveil.set()
 
+    def _deconnecte(self, *_):
+        self.statut = "deconnecte"
+
+    def _refuse(self, erreur=None):
+        self.statut = "refuse"
+        print(f"[Serveur] Connexion refusee : {erreur}")
+
+    def publier_frame(self, frame):
+        maintenant = time.time()
+        if maintenant - self.dernier_frame < self.intervalle or not self.sio.connected:
+            return
+        self.dernier_frame = maintenant
+        h, w = frame.shape[:2]
+        petite = cv2.resize(frame, (self.largeur, int(h * self.largeur / w)), interpolation=cv2.INTER_AREA)
+        ok, jpeg = cv2.imencode(".jpg", petite, [cv2.IMWRITE_JPEG_QUALITY, self.qualite])
+        if not ok:
+            return
+        with self.verrou:
+            self.frame_en_attente = jpeg.tobytes()   # ecrase l'image pas encore envoyee
+        self.reveil.set()
+
+    def publier_cartes(self, mains, largeur_image, hauteur_image):
+        mains = [{**m, "position": [round(m["position"][0] / largeur_image, 4),
+                                    round(m["position"][1] / hauteur_image, 4)]} for m in mains]
+        # Ne compare que ce qui compte : cartes, et position grossiere (pour le siege)
+        signature = json.dumps([(m["cartes"], m["nb_cartes_detectees"],
+                                 [round(c * 20) for c in m["position"]]) for m in mains])
+        if signature == self.derniere_signature:
+            return
+        self.derniere_signature = signature
         message = {"timestamp": time.time(), "nb_mains": len(mains), "mains": mains}
-        try:
-            self.file.get_nowait()       # jette l'ancien etat pas encore envoye
-        except queue.Empty:
-            pass
-        self.file.put_nowait(message)
+        with self.verrou:
+            self.cartes_en_attente = message
+            self.dernier_message_cartes = message
+        self.reveil.set()
 
     def _boucle(self):
-        while True:
-            message = self.file.get()
-            donnees = json.dumps(message).encode("utf-8")
-            requete = urllib.request.Request(self.url, data=donnees, headers=self.entetes, method="POST")
+        while not self.sio.connected:
             try:
-                with urllib.request.urlopen(requete, timeout=self.timeout) as rep:
-                    self.statut = f"OK ({rep.status})"
-            except urllib.error.HTTPError as e:
-                self.statut = f"erreur HTTP {e.code}"
-                print(f"[API] Le serveur a repondu {e.code} : {e.read()[:200]!r}")
+                self.sio.connect(self.url, namespaces=["/camera"], auth=self.auth,
+                                 transports=["websocket"], wait_timeout=5)
             except Exception as e:
                 self.statut = "serveur injoignable"
-                print(f"[API] Envoi impossible vers {self.url} : {e}")
-                self.dernier_envoye = None   # on reessaiera au prochain changement / frame
+                print(f"[Serveur] Connexion impossible a {self.url} : {e}")
+                time.sleep(2)
+
+        while True:
+            self.reveil.wait()
+            self.reveil.clear()
+            if not self.sio.connected:
+                continue   # socketio se reconnecte seul ; _connecte() nous reveillera
+            with self.verrou:
+                cartes, self.cartes_en_attente = self.cartes_en_attente, None
+                frame, self.frame_en_attente = self.frame_en_attente, None
+            try:
+                if cartes is not None:
+                    self.sio.emit("cartes", cartes, namespace="/camera")
+                if frame is not None:
+                    self.sio.emit("frame", frame, namespace="/camera")
+            except Exception as e:
+                print(f"[Serveur] Envoi impossible : {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -877,17 +928,17 @@ def rien(_):
     pass
 
 
-def mode_calibration(rang):
+def mode_calibration(rang, camera=0):
     global COIN_LARGEUR, COIN_HAUTEUR
 
     os.makedirs(DOSSIER_TEMPLATES, exist_ok=True)
     charger_config_coin()
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(camera)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     if not cap.isOpened():
-        print("Impossible d'ouvrir la camera.")
+        print(f"Impossible d'ouvrir la camera {camera}.")
         return
 
     cv2.namedWindow("Reglages coin")
@@ -999,19 +1050,18 @@ def dessiner_main(affichage, main, pistes_main):
     cv2.putText(affichage, texte, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, couleur, 2)
 
 
-def mode_detection(url_api=None):
+def mode_detection(diffuseur=None, diffuser_annote=False, camera=0):
     charger_config_coin()
     templates = charger_templates()
     suivi = SuiviCartes()
-    envoyeur = EnvoyeurAPI(url_api) if url_api else None
-    if envoyeur:
-        print(f"Envoi des mains vers {url_api}")
+    if diffuseur:
+        print(f"Diffusion de la video et des mains vers {diffuseur.url}")
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(camera)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     if not cap.isOpened():
-        print("Impossible d'ouvrir la camera.")
+        print(f"Impossible d'ouvrir la camera {camera}.")
         return
 
     print("'q' = quitter, 'r' = deverrouiller toutes les cartes, 's' = capture, 'm' = voir le masque blanc")
@@ -1049,14 +1099,15 @@ def mode_detection(url_api=None):
         mains = [decrire_main(i + 1, g) for i, g in enumerate(groupes)]
         for main, g in zip(mains, groupes):
             dessiner_main(affichage, main, g)
-        if envoyeur:
-            envoyeur.publier(mains)
+        if diffuseur:
+            diffuseur.publier_cartes(mains, frame.shape[1], frame.shape[0])
+            diffuseur.publier_frame(affichage if diffuser_annote else frame)
 
         nb_verrou = sum(p["rang_verrouille"] is not None for p in affichees)
-        statut_api = f"  API: {envoyeur.statut}" if envoyeur else ""
+        statut_api = f"  Serveur: {diffuseur.statut}" if diffuseur else ""
         cv2.putText(affichage, f"Cartes: {len(affichees)}  verrouillees: {nb_verrou}  mains: {len(mains)}{statut_api}",
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv2.imshow("Detection cartes + valeurs", affichage)
+        cv2.imshow(f"Detection cartes + valeurs (camera {camera})", affichage)
 
         touche = cv2.waitKey(1) & 0xFF
         if touche == ord("q"):
@@ -1081,14 +1132,30 @@ if __name__ == "__main__":
     parser.add_argument("--calibrer", type=str, default=None)
     parser.add_argument("--dossier", type=str, default="templates_rangs_2",
                         help="Dossier des templates (defaut: templates_rangs_2)")
-    parser.add_argument("--api", type=str, default=None,
-                        help="URL de l'API ou envoyer les mains en POST JSON, "
-                             "ex: http://localhost:5000/api/mains")
+    parser.add_argument("--serveur", type=str, default=None,
+                        help="URL du backend ou diffuser la video et les mains, "
+                             "ex: http://localhost:3000")
+    parser.add_argument("--salon", type=str, default=None,
+                        help="Identifiant (_id MongoDB) du salon filme")
+    parser.add_argument("--cle", type=str, default=os.environ.get("CLE_CAMERA"),
+                        help="Cle de la camera (CLE_CAMERA du .env du backend). "
+                             "Par defaut : variable d'environnement CLE_CAMERA")
+    parser.add_argument("--fps", type=int, default=15,
+                        help="Images/s envoyees au serveur (defaut: 15)")
+    parser.add_argument("--annote", action="store_true",
+                        help="Diffuser l'image avec les cadres et totaux dessines")
+    parser.add_argument("--camera", type=int, default=0,
+                        help="Index de la webcam (defaut: 0), pour filmer plusieurs salons a la fois")
     args = parser.parse_args()
 
     DOSSIER_TEMPLATES = args.dossier
 
     if args.calibrer:
-        mode_calibration(args.calibrer)
+        mode_calibration(args.calibrer, args.camera)
     else:
-        mode_detection(args.api)
+        diffuseur = None
+        if args.serveur:
+            if not args.salon or not args.cle:
+                parser.error("--serveur demande aussi --salon et --cle (ou la variable CLE_CAMERA)")
+            diffuseur = DiffuseurTable(args.serveur, args.salon, args.cle, fps=args.fps)
+        mode_detection(diffuseur, args.annote, args.camera)
