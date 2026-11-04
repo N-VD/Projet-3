@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { notifierSoldeMisAJour } from "../services/solde.js";
 
 const API_URL = "http://localhost:3000";
 
@@ -26,7 +27,7 @@ async function recupererTransactions(token) {
   return data.transactions;
 }
 
-export default function Compte() {
+export default function Compte({ setSoldeGlobal }) {
 
   // Déclaration des états pour le solde, le nom de l'utilisateur et les messages d'erreur
   const [solde, setSolde] = useState(null);
@@ -62,6 +63,8 @@ export default function Compte() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Impossible d'ajouter de l'argent.");
       setSolde(data.compte.montant);
+      setSoldeGlobal(data.compte.montant);
+      notifierSoldeMisAJour(data.compte.montant);
       setMessage("");
       try {
         setTransactions(await recupererTransactions(token));
@@ -93,6 +96,8 @@ export default function Compte() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Impossible de retirer de l'argent.");
       setSolde(data.compte.montant);
+      setSoldeGlobal(data.compte.montant);
+      notifierSoldeMisAJour(data.compte.montant);
       setMessage("");
       try {
         setTransactions(await recupererTransactions(token));

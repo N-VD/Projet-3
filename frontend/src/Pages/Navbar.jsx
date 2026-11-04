@@ -3,24 +3,46 @@ import { Link, useLocation } from "react-router-dom";
 import { API_URL } from "./reglesBlackjack/outils.js";
 import "./Navbar.css";
 
-export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
+export default function Navbar({ isLoggedIn, setIsLoggedIn, soldeGlobal }) {
     const location = useLocation();
     const isComptePage = location.pathname === "/compte";
     const [solde, setSolde] = useState(null);
 
     useEffect(() => {
+        let annule = false;
+        const controleur = new AbortController();
+        const mettreAJourSolde = (event) => {
+            const nouveauSolde = event.detail?.solde;
+            if (nouveauSolde === undefined || nouveauSolde === null) return;
+            controleur.abort();
+            setSolde(nouveauSolde);
+        };
+        window.addEventListener("solde:mis-a-jour", mettreAJourSolde);
         if (!isLoggedIn) {
-            setSolde(null);
-            return;
+            Promise.resolve().then(() => {
+                if (!annule) setSolde(null);
+            });
+            return () => {
+                annule = true;
+                controleur.abort();
+                window.removeEventListener("solde:mis-a-jour", mettreAJourSolde);
+            };
         }
 
         const token = localStorage.getItem("token");
         if (!token) {
-            setSolde(null);
-            return;
+            Promise.resolve().then(() => {
+                if (!annule) setSolde(null);
+            });
+            return () => {
+                annule = true;
+                controleur.abort();
+                window.removeEventListener("solde:mis-a-jour", mettreAJourSolde);
+            };
         }
 
         fetch(`${API_URL}/solde`, {
+            signal: controleur.signal,
             headers: { Authorization: `Bearer ${token}` },
         })
             .then(async (response) => {
@@ -28,9 +50,16 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                     throw new Error("Solde indisponible");
                 }
                 const data = await response.json();
-                setSolde(data.solde ?? 0);
+                if (!annule) setSolde(data.solde ?? 0);
             })
-            .catch(() => setSolde(null));
+            .catch(() => {
+                if (!annule && !controleur.signal.aborted) setSolde(null);
+            });
+        return () => {
+            annule = true;
+            controleur.abort();
+            window.removeEventListener("solde:mis-a-jour", mettreAJourSolde);
+        };
     }, [isLoggedIn]);
 
     function handleLogout() {
@@ -67,11 +96,11 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
                     </Link>
                 </div>
                 <div className="navbar-end">
-                    {isLoggedIn && solde !== null && (
+                    {isLoggedIn && (soldeGlobal ?? solde) !== null && (
                         <div className="navbar-item">
                             <span className="tag is-success is-medium" style={{ fontSize: "0.95rem" }}>
                                 <span className="icon"><i className="fas fa-coins" /></span>
-                                <span>Solde : {formatArgent(solde)}</span>
+                                <span>Solde : {formatArgent(soldeGlobal ?? solde)}</span>
                             </span>
                         </div>
                     )}

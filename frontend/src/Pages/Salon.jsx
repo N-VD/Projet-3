@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { connecterSocket, deconnecterSocket } from "../services/socket.js";
 import Blackjack from "./Blackjack.jsx";
@@ -13,7 +13,7 @@ function memeIdentifiant(premier, second) {
 	return premier != null && second != null && String(premier) === String(second);
 }
 
-function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
+function Salon({ setIsLoggedIn, setSoldeGlobal, setIsSpectateur, isSpectateur }) {
 	const navigate = useNavigate();
 	const utilisateur = lireUtilisateur();
 	const idUtilisateur = utilisateur.id ?? utilisateur._id;
@@ -24,23 +24,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 	const [chargement, setChargement] = useState(false);
 	const [message, setMessage] = useState("");
 
-	useEffect(() => {
-		const socket = connecterSocket();
-		appeler(isSpectateur ? "/spectateur/salons" : "/salons");
-
-		socket.on("mise_a_jour_table", (data) => {
-			if (data.salons) {
-				setSalons(data.salons);
-			}
-		});
-
-		return () => {
-			socket.off("mise_a_jour_table");
-			deconnecterSocket();
-		};
-	}, [isSpectateur]);
-
-	async function appeler(chemin, options = {}) {
+	const appeler = useCallback(async (chemin, options = {}) => {
 		setMessage("");
 		setChargement(true);
 		try {
@@ -51,6 +35,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 			if (!estModeSpectateur && token) {
 				headers.Authorization = `Bearer ${token}`;
 			}
+
 			const response = await fetch(`${API_URL}${cheminFinal}`, {
 				...options,
 				headers,
@@ -73,7 +58,27 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 		} finally {
 			setChargement(false);
 		}
-	}
+	}, [isSpectateur, setIsLoggedIn]);
+
+	useEffect(() => {
+		let annule = false;
+		const socket = connecterSocket();
+		Promise.resolve().then(() => {
+			if (!annule) appeler(isSpectateur ? "/spectateur/salons" : "/salons");
+		});
+
+		socket.on("mise_a_jour_table", (data) => {
+			if (data.salons) {
+				setSalons(data.salons);
+			}
+		});
+
+		return () => {
+			annule = true;
+			socket.off("mise_a_jour_table");
+			deconnecterSocket();
+		};
+	}, [appeler, isSpectateur]);
 
 	async function creerSalon() {
 		const data = await appeler("/createSalon", { method: "POST", body: JSON.stringify({}) });
@@ -100,7 +105,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 		if (data) await appeler("/salons");
 	}
 
-	async function rejoindreSalon(salonChoisi) {
+	async function rejoindreSalon(salonChoisi, choixAleatoire) {
 		const idS = idSalon(salonChoisi);
 		const joueurExistant = salonChoisi.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
 
@@ -119,7 +124,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 				await appeler("/salons");
 				return;
 			}
-			const siegeAleatoire = siegesLibres[Math.floor(Math.random() * siegesLibres.length)];
+			const siegeAleatoire = siegesLibres[Math.floor(choixAleatoire * siegesLibres.length)];
 			data = await appeler("/addPlayer", {
 				method: "POST",
 				body: JSON.stringify({ salonId: idS, seat_index: siegeAleatoire }),
@@ -136,7 +141,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 	}
 
 	if (salon) {
-		return <Blackjack salon={salon} setSalon={setSalon} setIsLoggedIn={setIsLoggedIn} isSpectateur={isSpectateur} retourAuxSalons={retourAuxSalons} />;
+		return <Blackjack salon={salon} setSalon={setSalon} setIsLoggedIn={setIsLoggedIn} setSoldeGlobal={setSoldeGlobal} isSpectateur={isSpectateur} retourAuxSalons={retourAuxSalons} />;
 	}
 
 	return (
@@ -178,7 +183,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 									<button
 										className="button is-warning"
 										style={{ flex: "0 0 85%", minWidth: 0, width: "85%" }}
-										onClick={() => rejoindreSalon(salonDisponible)}
+										onClick={() => rejoindreSalon(salonDisponible, Math.random())}
 										disabled={chargement || (!joueurExistant && (salonDisponible.status !== "waiting" || placesLibres === 0))}
 									>
 										{joueurExistant ? "Revenir au salon" : "Jouer"}
