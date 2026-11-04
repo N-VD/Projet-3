@@ -67,81 +67,93 @@ function Register({ setIsLoggedIn }) {
 	}
 
 	return (
-		<section className="section">
-			<div className="container">
-				<div className="columns is-centered">
-					<div className="column is-one-third">
-						<div className="box">
-							<h1 className="title">Inscription</h1>
-							<div className="tabs is-toggle is-fullwidth">
-								<ul>
-									<li><Link to="/login">Se connecter</Link></li>
-									<li className="is-active"><a>Créer un compte</a></li>
-								</ul>
-							</div>
-							<form onSubmit={handleSubmit}>
-								<div className="field">
-									<label className="label" htmlFor="register-name">Nom d'utilisateur</label>
-									<div className="control has-icons-left">
-										<input id="register-name" className="input" type="text" value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="username" required />
-										<span className="icon is-small is-left"><i className="fas fa-user" /></span>
-									</div>
-								</div>
-								<div className="field">
-									<label className="label" htmlFor="register-email">Courriel</label>
-									<div className="control has-icons-left">
-										<input id="register-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-										<span className="icon is-small is-left"><i className="fas fa-envelope" /></span>
-									</div>
-								</div>
-								<label className="label" htmlFor="register-password">Mot de passe</label>
-								<div className="field has-addons mb-1">
-									<div className="control has-icons-left is-expanded">
-										<input
-											id="register-password"
-											className={`input ${showPasswordErrors ? (reglesNonRespectees.length ? "is-danger" : "is-success") : ""}`}
-											type={showPassword ? "text" : "password"}
-											value={password}
-											onChange={(e) => setPassword(e.target.value)}
-											autoComplete="new-password"
-											aria-describedby="register-password-rules"
-											required
-										/>
-										<span className="icon is-small is-left"><i className="fas fa-lock" /></span>
-									</div>
-									<div className="control">
-										<button className="button" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label="Afficher le mot de passe">
-											<span className="icon is-small"><i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"} /></span>
-										</button>
-									</div>
-								</div>
-								<ul id="register-password-rules" className="mb-3">
-									{REGLES_MOT_DE_PASSE.map((regle) => {
-										const ok = regle.test(password);
-										const couleur = ok ? "has-text-success" : showPasswordErrors ? "has-text-danger" : "has-text-grey";
-										return (
-											<li key={regle.texte} className={`help ${couleur}`}>
-												<span className="icon is-small mr-1"><i className={ok ? "fas fa-check" : "fas fa-times"} /></span>
-												{regle.texte}
-											</li>
-										);
-									})}
-								</ul>
-								<div className="field">
-									<label className="label" htmlFor="register-birthdate">Date de naissance</label>
-									<div className="control has-icons-left">
-										<input id="register-birthdate" className="input" type="date" value={dateNaissance} onChange={(e) => setDateNaissance(e.target.value)} required />
-										<span className="icon is-small is-left"><i className="fas fa-calendar" /></span>
-									</div>
-								</div>
-								<button className="button is-primary is-fullwidth" type="submit">S'inscrire</button>
-								{message && <p className="has-text-danger mt-3" role="alert">{message}</p>}
-							</form>
-						</div>
+		<div
+			style={{
+				position: "fixed",
+				top: "72px",
+				left: 0,
+				right: 0,
+				bottom: 0,
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				padding: "1.5rem",
+				background: "rgba(15, 23, 42, 0.35)",
+				backdropFilter: "blur(4px)",
+				WebkitBackdropFilter: "blur(4px)",
+				zIndex: 40,
+			}}
+		>
+			<div style={{ width: "100%", maxWidth: "440px" }}>
+				<div className="box" style={{ border: "1px solid #d6d6d6", borderRadius: "16px", boxShadow: "0 18px 45px rgba(15, 23, 42, 0.25)", padding: "1.5rem" }}>
+					<h1 className="title">Inscription</h1>
+					<div className="tabs is-toggle is-fullwidth">
+						<ul>
+							<li><Link to="/login">Se connecter</Link></li>
+							<li className="is-active"><a>Créer un compte</a></li>
+						</ul>
 					</div>
+					<form onSubmit={handleSubmit}>
+						<div className="field">
+							<label className="label" htmlFor="register-name">Nom d'utilisateur</label>
+							<div className="control has-icons-left">
+								<input id="register-name" className="input" type="text" value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="username" required />
+								<span className="icon is-small is-left"><i className="fas fa-user" /></span>
+							</div>
+						</div>
+						<div className="field">
+							<label className="label" htmlFor="register-email">Courriel</label>
+							<div className="control has-icons-left">
+								<input id="register-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+								<span className="icon is-small is-left"><i className="fas fa-envelope" /></span>
+							</div>
+						</div>
+						<label className="label" htmlFor="register-password">Mot de passe</label>
+						<div className="field has-addons mb-1">
+							<div className="control has-icons-left is-expanded">
+								<input
+									id="register-password"
+									className={`input ${showPasswordErrors ? (reglesNonRespectees.length ? "is-danger" : "is-success") : ""}`}
+									type={showPassword ? "text" : "password"}
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									autoComplete="new-password"
+									aria-describedby="register-password-rules"
+									required
+								/>
+								<span className="icon is-small is-left"><i className="fas fa-lock" /></span>
+							</div>
+							<div className="control">
+								<button className="button" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label="Afficher le mot de passe">
+									<span className="icon is-small"><i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"} /></span>
+								</button>
+							</div>
+						</div>
+						<ul id="register-password-rules" className="mb-3">
+							{REGLES_MOT_DE_PASSE.map((regle) => {
+								const ok = regle.test(password);
+								const couleur = ok ? "has-text-success" : showPasswordErrors ? "has-text-danger" : "has-text-grey";
+								return (
+									<li key={regle.texte} className={`help ${couleur}`}>
+										<span className="icon is-small mr-1"><i className={ok ? "fas fa-check" : "fas fa-times"} /></span>
+										{regle.texte}
+									</li>
+								);
+							})}
+						</ul>
+						<div className="field">
+							<label className="label" htmlFor="register-birthdate">Date de naissance</label>
+							<div className="control has-icons-left">
+								<input id="register-birthdate" className="input" type="date" value={dateNaissance} onChange={(e) => setDateNaissance(e.target.value)} required />
+								<span className="icon is-small is-left"><i className="fas fa-calendar" /></span>
+							</div>
+						</div>
+						<button className="button is-fullwidth" type="submit" style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }}>S'inscrire</button>
+						{message && <p className="has-text-danger mt-3" role="alert">{message}</p>}
+					</form>
 				</div>
 			</div>
-		</section>
+		</div>
 	);
 }
 
