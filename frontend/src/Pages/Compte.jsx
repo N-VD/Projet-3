@@ -31,11 +31,15 @@ export default function Compte() {
   // Déclaration des états pour le solde, le nom de l'utilisateur et les messages d'erreur
   const [solde, setSolde] = useState(null);
   const [nom, setNom] = useState("");
+  const [idCompte, setIdCompte] = useState("");
   const [nouveauNom, setNouveauNom] = useState("");
   const [afficherModificationNom, setAfficherModificationNom] = useState(false);
   const [motDePasseActuel, setMotDePasseActuel] = useState("");
   const [nouveauMotDePasse, setNouveauMotDePasse] = useState("");
   const [afficherModificationMotDePasse, setAfficherModificationMotDePasse] = useState(false);
+  const [afficherSuppressionCompte, setAfficherSuppressionCompte] = useState(false);
+  const [nomDeConfirmation, setNomDeConfirmation] = useState("");
+  const [erreurSuppression, setErreurSuppression] = useState("");
   const [message, setMessage] = useState("");
   const [montantAjout, setMontantAjout] = useState("");
   const [afficherAjout, setAfficherAjout] = useState(false);
@@ -157,6 +161,58 @@ export default function Compte() {
     }
   };
 
+  // Fonction pour supprimer le compte
+  const supprimerCompte = async () => {
+    if (!token) {
+      setErreurSuppression("Vous devez être connecté pour effectuer cette action.");
+      return false;
+    }
+    if (!idCompte) {
+      setErreurSuppression("Impossible de récupérer l'identifiant du compte.");
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/deleteCompte`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: idCompte }),
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : null;
+      if (!response.ok) {
+        throw new Error(
+          data?.message || `Le serveur a retourné une erreur (HTTP ${response.status}).`
+        );
+      }
+      if (!data) {
+        throw new Error(
+          `Le serveur a renvoyé une réponse non JSON (HTTP ${response.status}). Vérifiez que le backend est démarré et que la route /deleteCompte est disponible.`
+        );
+      }
+
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+      return true;
+    } catch (error) {
+      setErreurSuppression(error.message);
+      return false;
+    }
+  };
+
+  const validerSuppressionCompte = async (event) => {
+    event.preventDefault();
+    if (nomDeConfirmation.trim() !== nom) {
+      setErreurSuppression("Le nom saisi ne correspond pas au nom de votre compte.");
+      return;
+    }
+    setErreurSuppression("");
+    await supprimerCompte();
+  };
+
   // Fetch le solde et les informations du compte connecté lors du montage du composant
   useEffect(() => {
     if (!token) {
@@ -180,6 +236,7 @@ export default function Compte() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || "Impossible de charger les informations du compte.");
         setNom(data.nom);
+        setIdCompte(data._id);
       })
       .catch((error) => setMessage(error.message));
 
@@ -254,6 +311,7 @@ export default function Compte() {
     setAfficherModificationMotDePasse(formulaire === "motDePasse");
     setAfficherAjout(formulaire === "ajout");
     setAfficherRetrait(formulaire === "retrait");
+    setAfficherSuppressionCompte(formulaire === "suppression")
   };
 
   // Rendu du composant
@@ -267,7 +325,7 @@ export default function Compte() {
         <div style={{ width: "min(900px, 90vw)" }}>
           <div
             className={`is-flex is-justify-content-center is-align-items-center is-flex-wrap-wrap ${
-              afficherModificationNom || afficherModificationMotDePasse ? "mb-0" : "mb-6"
+                afficherModificationNom || afficherModificationMotDePasse || afficherSuppressionCompte ? "mb-0" : "mb-6"
             }`}
             style={{ width: "100%", gap: "0.75rem" }}
           >
@@ -295,6 +353,20 @@ export default function Compte() {
               >
                 Modifier le mot de passe
               </button>
+            )}
+            {!afficherSuppressionCompte && (
+             <button
+              className="button is-danger"
+              type="button"
+              onClick={() => {
+                ouvrirFormulaire("suppression")
+                setNomDeConfirmation("");
+                setErreurSuppression("");
+                setMessage("");
+              }}
+              >
+                Suppression du Compte
+             </button>
             )}
           </div>
           {afficherModificationNom ? (
@@ -374,6 +446,50 @@ export default function Compte() {
                       setAfficherModificationMotDePasse(false);
                       setMotDePasseActuel("");
                       setNouveauMotDePasse("");
+                      setMessage("");
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
+          {afficherSuppressionCompte ? (
+            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
+              <form onSubmit={validerSuppressionCompte}>
+                <h2 className="title is-4">Supprimer le compte</h2>
+                <p className="mb-4">Cette action est irréversible.</p>
+                <div className="field">
+                  <label className="label" htmlFor="nom-confirmation-suppression">
+                    Pour confirmer, écrivez le nom de votre compte : <strong>{nom}</strong>
+                  </label>
+                  <input
+                    id="nom-confirmation-suppression"
+                    className="input"
+                    type="text"
+                    value={nomDeConfirmation}
+                    onChange={(event) => {
+                      setNomDeConfirmation(event.target.value);
+                      setErreurSuppression("");
+                    }}
+                    autoComplete="off"
+                    autoFocus
+                    required
+                  />
+                </div>
+                {erreurSuppression && (
+                  <p className="has-text-danger mb-3" role="alert">{erreurSuppression}</p>
+                )}
+                <div className="buttons is-centered mt-4 mb-0">
+                  <button className="button is-danger" type="submit">Supprimer mon compte</button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setAfficherSuppressionCompte(false);
+                      setNomDeConfirmation("");
+                      setErreurSuppression("");
                       setMessage("");
                     }}
                   >

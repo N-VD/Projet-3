@@ -83,11 +83,11 @@ router.delete('/deleteCompte', authentifier, async (req, res) => {
     const { id } = req.body;
     
     // Vérifier si l'utilisateur est un administrateur
-    if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
-        return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas autorisé à supprimer des comptes." });
-    }
+    // if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
+    //     return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas autorisé à supprimer des comptes." });
+    // }
     //validation contre les injection noSQL
-    if(!id||!mongoose.isValidObjectID(id)){
+    if(!id||!mongoose.isValidObjectId(id)){
         return res.status(400).json({message:"Idendifiant de compte invalide"});
     }
     
