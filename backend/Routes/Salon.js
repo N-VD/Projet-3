@@ -5,6 +5,7 @@ const Salon = require('../models/salon');
 const Compte = require('../models/compte');
 const Transaction = require('../models/transaction');
 const { retourJoueur } = require('../jeux/reglementSalon');
+const { notifierSalonFerme } = require('../sockets/socketServer');
 const router = express.Router();
 
 
@@ -352,6 +353,7 @@ router.delete('/deleteSalon', authentifier, async (req, res) => {
         }
 
         await Salon.findByIdAndDelete(salonId);
+        notifierSalonFerme(salonId); // les connexions encore à la table sont renvoyées au lobby
 
         return res.status(200).json({ message: 'Salon supprimé.', salon });
     } catch (error) {

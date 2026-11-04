@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
 	API_URL,
 	idSalon,
@@ -12,6 +12,9 @@ function memeIdentifiant(premier, second) {
 
 function Salon({ setIsLoggedIn }) {
 	const navigate = useNavigate();
+	const location = useLocation();
+	// ex. « Ce salon a été fermé. » quand la table nous renvoie ici (copié en état pour pouvoir le fermer)
+	const [avis, setAvis] = useState(() => location.state?.message);
 	const utilisateur = lireUtilisateur();
 	const idUtilisateur = utilisateur.id ?? utilisateur._id;
 	const role = utilisateur.role?.toLowerCase();
@@ -70,15 +73,6 @@ function Salon({ setIsLoggedIn }) {
 		if (data?.salon) ouvrirTable(idSalon(data.salon));
 	}
 
-	async function fermerSalon(salonAfermer) {
-		if (!window.confirm("Voulez-vous fermer ce salon ?")) return;
-		const data = await appeler("/deleteSalon", {
-			method: "DELETE",
-			body: JSON.stringify({ salonId: idSalon(salonAfermer) }),
-		});
-		if (data) await appeler("/salons");
-	}
-
 	async function rejoindreSalon(salonChoisi) {
 		const idS = idSalon(salonChoisi);
 		const joueurExistant = salonChoisi.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
@@ -115,6 +109,22 @@ function Salon({ setIsLoggedIn }) {
 					<h1 className="title is-2 mb-0">Salons de blackjack</h1>
 				</div>
 
+				{avis && <div className="notification is-warning is-light mt-4 mb-8" role="status">
+					<button
+						className="delete"
+						aria-label="Fermer la notification"
+						onClick={() => {
+							setAvis(null);
+							navigate(location.pathname, { replace: true, state: null }); // ne revient pas après un rafraîchissement
+						}}
+					/>
+					{avis}
+				</div>}
+				{message && <div className="notification is-danger is-light mt-4 mb-8" role="alert">
+					<button className="delete" aria-label="Fermer la notification" onClick={() => setMessage("")} />
+					{message}
+				</div>}
+
 				{salons.length === 0 ? (
 					<div className="box has-text-centered" style={{ border: "1px solid #d6d6d6" }}>
 						<p className="has-text-grey">Aucun salon ouvert pour le moment.</p>
@@ -146,18 +156,14 @@ function Salon({ setIsLoggedIn }) {
 									Regarder
 								</button>
 							) : estDealer ? (
-								<div className="buttons is-centered" style={{ marginBottom: 0, display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "0.5rem", width: "100%", alignItems: "stretch" }}>
-									<button
-										className="button is-danger"
-										style={{ flex: "0 0 85%", minWidth: 0, width: "85%" }}
-										onClick={() => fermerSalon(salonDisponible)}
-										disabled={chargement || salonDisponible.status === "playing"}
-										aria-label={`Fermer le salon ${idSalon(salonDisponible)}`}
-									>
-										Fermer
-									</button>
-									{boutonRegarder}
-								</div>
+								// Son salon : il l'ouvre pour filmer (la fermeture se fait depuis la table)
+								<button
+									className="button is-warning is-fullwidth"
+									onClick={() => ouvrirTable(idSalon(salonDisponible))}
+									disabled={chargement}
+								>   <span className="icon is-small mr-2"><i className="fas fa-video" /></span>
+									Ouvrir ma table
+								</button>
 							) : (
 								<div className="buttons is-centered" style={{ marginBottom: 0, display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "0.5rem", width: "100%", alignItems: "stretch" }}>
 									<button
@@ -216,8 +222,6 @@ function Salon({ setIsLoggedIn }) {
 						<span>Rafraîchir</span>
 					</button>
 				</div>
-
-				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
 			</div>
 		</section>
 	);

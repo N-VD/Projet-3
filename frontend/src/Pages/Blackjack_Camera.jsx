@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { connecterSocket } from "../services/socket.js";
 import "./Blackjack.css";
+import { lireUtilisateur } from "./reglesBlackjack/outils.js";
 
 const FPS_ENVOI = 10;
 const QUALITE_JPEG = 0.7;
@@ -107,11 +108,14 @@ function useImagesRecues(actif, socket) {
 /** Entrée : aucune (l'id du salon vient de l'URL); sortie : le JSX de la table filmée. */
 function BlackjackCamera() {
 	const { id: salonId } = useParams();
+	const navigate = useNavigate();
 	// Rôle décidé par le serveur au "join" : "dealer" (créateur du salon, il filme), "joueur" ou "spectateur"
 	const [role, setRole] = useState(null);
 	const filme = role === "dealer";
 	const [socket] = useState(connecterSocket);
+	const [salon, setSalon] = useState(null); // état de la table : reçu au "join", puis à chaque "game:update"
 	const [message, setMessage] = useState("");
+	const [chargement, setChargement] = useState(false);
 	const [statutCamera, setStatutCamera] = useState(null);
 	const videoRef = useRef(null);
 
@@ -125,11 +129,57 @@ function BlackjackCamera() {
 		const rejoindre = () => socket.emit("join", salonId, (reponse) => {
 			setMessage(reponse?.error ?? "");
 			if (reponse?.role) setRole(reponse.role);
+			if (reponse?.salon) setSalon(reponse.salon);
 		});
+		const surMiseAJour = ({ salon: salonMaj } = {}) => {
+			if (salonMaj) setSalon(salonMaj);
+		};
+		// Le dealer a fermé le salon : retour au lobby
+		const surFermeture = () => navigate("/", { replace: true, state: { message: "Ce salon a été fermé." } });
 		rejoindre();
 		socket.on("connect", rejoindre);
-		return () => socket.off("connect", rejoindre);
-	}, [socket, salonId]);
+		socket.on("game:update", surMiseAJour);
+		socket.on("salon:closed", surFermeture);
+		return () => {
+			socket.off("connect", rejoindre);
+			socket.off("game:update", surMiseAJour);
+			socket.off("salon:closed", surFermeture);
+		};
+	}, [socket, salonId, navigate]);
+
+	/** Entrée : nom de l'événement; sortie : Promise de la réponse du serveur (erreur si pas de réponse en 5 s). */
+	function demander(evenement) {
+		return new Promise((resoudre) => {
+			socket.timeout(5000).emit(evenement, (erreur, reponse) => {
+				resoudre(erreur ? { error: "Le serveur ne répond pas." } : reponse);
+			});
+		});
+	}
+
+	/** Entrée : aucune; sortie : Promise résolue après le départ (un joueur perd sa place et sa main). */
+	async function quitterTable() {
+		if (role === "joueur") {
+			const monId = lireUtilisateur().id;
+			const moi = salon?.players?.find((player) => String(player.id_compte) === String(monId));
+			const mainEnJeu = salon?.status === "playing" || Number(moi?.bet) > 0 || moi?.hands?.some((main) => main.cartes?.length > 0);
+			if (mainEnJeu && !window.confirm("Votre main sera perdue et votre place libérée. Quitter quand même ?")) return;
+			setChargement(true);
+			const reponse = await demander("leave");
+			setChargement(false);
+			if (reponse?.error) return setMessage(reponse.error);
+		}
+		navigate("/");
+	}
+
+	/** Entrée : aucune; sortie : Promise résolue après la fermeture du salon par son dealer. */
+	async function fermerSalon() {
+		if (!window.confirm("Voulez-vous fermer ce salon ? Tout le monde sera renvoyé au lobby.")) return;
+		setChargement(true);
+		const reponse = await demander("salon:close");
+		setChargement(false);
+		if (reponse?.error) return setMessage(reponse.error);
+		navigate("/");
+	}
 
 	useCaptureCamera(filme, socket, videoRef, setStatutCamera);
 	const { image, enDirect } = useImagesRecues(role !== null && !filme, socket); // en attendant le rôle : rien
@@ -141,8 +191,16 @@ function BlackjackCamera() {
 			<div className="container">
 				<div className="level is-mobile mb-4">
 					<div className="level-left"><div className="level-item">
-						<Link to="/" className="button is-small is-text"><span className="icon"><i className="fas fa-arrow-left" /></span><span>Retour aux salons</span></Link>
+						<button className="button is-small is-text" onClick={quitterTable} disabled={chargement}>
+							<span className="icon"><i className="fas fa-arrow-left" /></span>
+							<span>{role === "joueur" ? "Quitter la table" : "Retour aux salons"}</span>
+						</button>
 					</div></div>
+					{role === "dealer" && <div className="level-right"><div className="level-item">
+						<button className="button is-small is-danger" onClick={fermerSalon} disabled={chargement}>
+							<span className="icon"><i className="fas fa-times" /></span><span>Fermer le salon</span>
+						</button>
+					</div></div>}
 				</div>
 
 				<div className="bj-table">
@@ -171,7 +229,10 @@ function BlackjackCamera() {
 					</div>
 				</div>
 
-				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
+				{message && <div className="notification is-danger is-light mt-4 mb-0" role="alert">
+					<button className="delete" aria-label="Fermer la notification" onClick={() => setMessage("")} />
+					{message}
+				</div>}
 			</div>
 		</section>
 	);
