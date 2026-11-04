@@ -8,7 +8,6 @@ import AuthPopup from "./Pages/AuthPopup.jsx";
 import Salon from "./Pages/Salon.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
 import BlackjackCamera from "./Pages/Blackjack_Camera.jsx";
-import SpectateurTable from "./Pages/SpectateurTable.jsx";
 import GithubCallback from "./Pages/GithubCallback.jsx";
 
 function isTokenExpired(token) {
@@ -26,9 +25,9 @@ function Routeur() {
 		}
 		return true;
 	});
-	const [isSpectateur, setIsSpectateur] = useState(false);
+	// Invité : pas de compte, mais il peut ouvrir une table (le socket lui donne le rôle spectateur)
 	const [isGuest, setIsGuest] = useState(() => sessionStorage.getItem("guest") === "true");
-	const fond = <Salon isLoggedIn={false} setIsLoggedIn={setIsLoggedIn} />;
+	const fond = <Salon setIsLoggedIn={setIsLoggedIn} />;
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -38,11 +37,9 @@ function Routeur() {
 				<Route
 					path="/"
 					element={
-						isLoggedIn
-							? <Salon setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} isSpectateur={false} />
-							: isGuest || isSpectateur
-								? <Navigate to="/spectateur" replace />
-								: <Navigate to="/login" replace />
+						isLoggedIn || isGuest
+							? <Salon setIsLoggedIn={setIsLoggedIn} />
+							: <Navigate to="/login" replace />
 					}
 				/>
 				<Route
@@ -53,7 +50,7 @@ function Routeur() {
 						) : (
 							<>
 								{fond}
-								<Login setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} />
+								<Login setIsLoggedIn={setIsLoggedIn} setIsGuest={setIsGuest} />
 							</>
 						)
 					}
@@ -72,14 +69,6 @@ function Routeur() {
 					}
 				/>
 				<Route
-					path="/spectateur"
-					element={
-						isGuest || isSpectateur || (!isLoggedIn && sessionStorage.getItem("guest") === "true")
-							? <Salon setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} isSpectateur={true} />
-							: <Navigate to="/login" replace />
-					}
-				/>
-				<Route
 					path="/auth/github/callback"
 					element={isLoggedIn ? <Navigate to="/" replace /> : <GithubCallback setIsLoggedIn={setIsLoggedIn} />}
 				/>
@@ -93,15 +82,11 @@ function Routeur() {
 				/>
 				<Route
 					path="/jeux/blackjack-camera/:id"
-					element={isLoggedIn ? <BlackjackCamera /> : <Navigate to="/login" replace />}
+					element={isLoggedIn || isGuest ? <BlackjackCamera /> : <Navigate to="/login" replace />}
 				/>
 				<Route
 					path="/dashboard"
 					element={<Navigate to="/" replace />}
-				/>
-				<Route
-					path="/spectateur/:id"
-					element={<SpectateurTable />}
 				/>
 			</Routes>
 		</BrowserRouter>

@@ -12,6 +12,8 @@ export function connecterSocket() {
     if (!socket) {
         socket = io(SOCKET_URL, {
             autoConnect: true,
+            // Lu à chaque (re)connexion : le serveur en déduit le rôle (pas de token = spectateur invité)
+            auth: (envoyer) => envoyer({ token: localStorage.getItem("token") }),
         });
     }
     return socket;

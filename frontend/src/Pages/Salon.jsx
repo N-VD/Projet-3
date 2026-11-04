@@ -1,50 +1,47 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Blackjack from "./Blackjack.jsx";
 import {
 	API_URL,
 	idSalon,
 	lireUtilisateur,
-	normaliserSalon,
 } from "./reglesBlackjack/outils.js";
 
 function memeIdentifiant(premier, second) {
 	return premier != null && second != null && String(premier) === String(second);
 }
 
-function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
+function Salon({ setIsLoggedIn }) {
 	const navigate = useNavigate();
 	const utilisateur = lireUtilisateur();
 	const idUtilisateur = utilisateur.id ?? utilisateur._id;
 	const role = utilisateur.role?.toLowerCase();
 	const estDealer = role === "dealer" || role === "admin";
-	const [salon, setSalon] = useState(null);
+	const estConnecte = Boolean(localStorage.getItem("token")); // sinon invité : il peut seulement regarder
 	const [salons, setSalons] = useState([]);
 	const [chargement, setChargement] = useState(false);
 	const [message, setMessage] = useState("");
 
 	// Le lobby est en HTTP seulement : la connexion Socket.IO (et le "join") appartient à la table
 	useEffect(() => {
-		appeler(isSpectateur ? "/spectateur/salons" : "/salons");
-	}, [isSpectateur]);
+		appeler("/salons");
+	}, []);
 
 	async function appeler(chemin, options = {}) {
 		setMessage("");
 		setChargement(true);
 		try {
-			const estModeSpectateur = Boolean(isSpectateur || chemin === "/spectateur/salons" || (!localStorage.getItem("token") && chemin === "/salons"));
-			const cheminFinal = chemin === "/salons" && estModeSpectateur ? "/spectateur/salons" : chemin;
+			// /salons accepte les invités : le token n'est envoyé que si on en a un
 			const headers = { "Content-Type": "application/json" };
 			const token = localStorage.getItem("token");
-			if (!estModeSpectateur && token) {
+			if (token) {
 				headers.Authorization = `Bearer ${token}`;
 			}
-			const response = await fetch(`${API_URL}${cheminFinal}`, {
+			const response = await fetch(`${API_URL}${chemin}`, {
 				...options,
 				headers,
 			});
 			const data = await response.json();
-			if (response.status === 401 && !estModeSpectateur) {
+			if (response.status === 401 && token) {
 				localStorage.removeItem("token");
 				setIsLoggedIn(false);
 				return null;
@@ -63,18 +60,14 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 		}
 	}
 
-	async function creerSalon() {
-		const data = await appeler("/createSalon", { method: "POST", body: JSON.stringify({}) });
-		if (data?.salon) {
-			const salonNormalise = normaliserSalon(data.salon);
-			setSalon(salonNormalise);
-			await appeler("/salons");
-		}
+	/** Entrée : id du salon; ouvre sa table (le rôle dealer / joueur / spectateur est décidé par le socket). */
+	function ouvrirTable(salonId) {
+		navigate(`/jeux/blackjack-camera/${salonId}`);
 	}
 
-	async function retourAuxSalons() {
-		setSalon(null);
-		await appeler("/salons");
+	async function creerSalon() {
+		const data = await appeler("/createSalon", { method: "POST", body: JSON.stringify({}) });
+		if (data?.salon) ouvrirTable(idSalon(data.salon));
 	}
 
 	async function fermerSalon(salonAfermer) {
@@ -112,15 +105,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 			});
 		}
 
-		if (data?.salon) {
-			const salonNormalise = normaliserSalon(data.salon);
-			setSalon(salonNormalise);
-			await appeler("/salons");
-		}
-	}
-
-	if (salon) {
-		return <Blackjack salon={salon} setSalon={setSalon} setIsLoggedIn={setIsLoggedIn} isSpectateur={isSpectateur} retourAuxSalons={retourAuxSalons} />;
+		if (data?.salon) ouvrirTable(idS);
 	}
 
 	return (
@@ -138,25 +123,41 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 					<div className="columns is-multiline">
 						{salons.map((salonDisponible) => {
 							const placesLibres = Math.max(0, 6 - salonDisponible.players.length);
-							const estCreateur = salonDisponible.created_by === utilisateur.id;
+							const estCreateur = memeIdentifiant(salonDisponible.created_by, idUtilisateur);
 							const joueurExistant = salonDisponible.players.some((player) => memeIdentifiant(player.id_compte, idUtilisateur));
-							const boutonAction = isSpectateur ? (
+							const boutonRegarder = (
+								<button
+									className="button is-light"
+									style={{ flex: "0 0 15%", minWidth: 0, width: "15%", paddingLeft: "0.35rem", paddingRight: "0.35rem" }}
+									onClick={() => ouvrirTable(idSalon(salonDisponible))}
+									disabled={chargement}
+									aria-label="Regarder le salon"
+								>
+									<span className="icon is-small"><i className="fas fa-eye" /></span>
+								</button>
+							);
+							// Invité, ou dealer qui n'a pas créé ce salon : il peut seulement regarder
+							const boutonAction = !estConnecte || (estDealer && !estCreateur) ? (
 								<button
 									className="button is-warning is-fullwidth"
-									onClick={() => navigate(`/spectateur/${idSalon(salonDisponible)}`)}
+									onClick={() => ouvrirTable(idSalon(salonDisponible))}
 									disabled={chargement}
 								>   <span className="icon is-small mr-2"><i className="fas fa-eye" /></span>
-									Regarder en mode spectateur
+									Regarder
 								</button>
-							) : estDealer ? estCreateur && (
-								<button
-									className="button is-danger is-fullwidth"
-									onClick={() => fermerSalon(salonDisponible)}
-									disabled={chargement || salonDisponible.status === "playing"}
-									aria-label={`Fermer le salon ${idSalon(salonDisponible)}`}
-								>
-									Fermer
-								</button>
+							) : estDealer ? (
+								<div className="buttons is-centered" style={{ marginBottom: 0, display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "0.5rem", width: "100%", alignItems: "stretch" }}>
+									<button
+										className="button is-danger"
+										style={{ flex: "0 0 85%", minWidth: 0, width: "85%" }}
+										onClick={() => fermerSalon(salonDisponible)}
+										disabled={chargement || salonDisponible.status === "playing"}
+										aria-label={`Fermer le salon ${idSalon(salonDisponible)}`}
+									>
+										Fermer
+									</button>
+									{boutonRegarder}
+								</div>
 							) : (
 								<div className="buttons is-centered" style={{ marginBottom: 0, display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: "0.5rem", width: "100%", alignItems: "stretch" }}>
 									<button
@@ -167,18 +168,7 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 									>
 										{joueurExistant ? "Revenir au salon" : "Jouer"}
 									</button>
-									<button
-										className="button is-light"
-										style={{ flex: "0 0 15%", minWidth: 0, width: "15%", paddingLeft: "0.35rem", paddingRight: "0.35rem" }}
-										onClick={() => {
-											setIsSpectateur(true);
-											navigate("/spectateur");
-										}}
-										disabled={chargement}
-										aria-label="Regarder le salon"
-									>
-										<span className="icon is-small"><i className="fas fa-eye" /></span>
-									</button>
+									{boutonRegarder}
 								</div>
 							);
 

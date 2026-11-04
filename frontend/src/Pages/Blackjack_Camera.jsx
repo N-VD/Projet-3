@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { connecterSocket } from "../services/socket.js";
 import "./Blackjack.css";
-import { lireUtilisateur } from "./reglesBlackjack/outils.js";
 
 const FPS_ENVOI = 10;
 const QUALITE_JPEG = 0.7;
@@ -108,9 +107,9 @@ function useImagesRecues(actif, socket) {
 /** Entrée : aucune (l'id du salon vient de l'URL); sortie : le JSX de la table filmée. */
 function BlackjackCamera() {
 	const { id: salonId } = useParams();
-	const role = lireUtilisateur().role?.toLowerCase();
-	// Le dealer filme la table; les autres la regardent
-	const filme = role === "dealer" || role === "admin";
+	// Rôle décidé par le serveur au "join" : "dealer" (créateur du salon, il filme), "joueur" ou "spectateur"
+	const [role, setRole] = useState(null);
+	const filme = role === "dealer";
 	const [socket] = useState(connecterSocket);
 	const [message, setMessage] = useState("");
 	const [statutCamera, setStatutCamera] = useState(null);
@@ -125,6 +124,7 @@ function BlackjackCamera() {
 	useEffect(() => {
 		const rejoindre = () => socket.emit("join", salonId, (reponse) => {
 			setMessage(reponse?.error ?? "");
+			if (reponse?.role) setRole(reponse.role);
 		});
 		rejoindre();
 		socket.on("connect", rejoindre);
@@ -132,7 +132,7 @@ function BlackjackCamera() {
 	}, [socket, salonId]);
 
 	useCaptureCamera(filme, socket, videoRef, setStatutCamera);
-	const { image, enDirect } = useImagesRecues(!filme, socket);
+	const { image, enDirect } = useImagesRecues(role !== null && !filme, socket); // en attendant le rôle : rien
 
 	const couleurStatut = { succes: "is-success", erreur: "is-danger", info: "is-info" };
 
@@ -141,14 +141,17 @@ function BlackjackCamera() {
 			<div className="container">
 				<div className="level is-mobile mb-4">
 					<div className="level-left"><div className="level-item">
-						<Link to="/" className="button is-small is-text"><span className="icon"><i className="fas fa-arrow-left" /></span><span>Tous les jeux</span></Link>
+						<Link to="/" className="button is-small is-text"><span className="icon"><i className="fas fa-arrow-left" /></span><span>Retour aux salons</span></Link>
 					</div></div>
 				</div>
 
 				<div className="bj-table">
 					<div className="level is-mobile">
 						<div className="level-left" />
-						<div className="level-right"><span className="tag is-dark">Salon {salonId}</span></div>
+						<div className="level-right">
+							{role === "spectateur" && <span className="tag is-info mr-2"><span className="icon"><i className="fas fa-eye" /></span><span>Spectateur</span></span>}
+							<span className="tag is-dark">Salon {salonId}</span>
+						</div>
 					</div>
 					<h1 className="title has-text-centered">Blackjack</h1>
 					<p className="subtitle is-6 has-text-centered">{filme ? "Vous filmez cette table" : "Table réelle en direct"}</p>
