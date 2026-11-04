@@ -6,8 +6,8 @@ import Login from "./Pages/Login.jsx";
 import Compte from "./Pages/Compte.jsx";
 import Navbar from "./Pages/Navbar.jsx";
 import AuthPopup from "./Pages/AuthPopup.jsx";
+import Salon from "./Pages/Salon.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
-import Spectateur from "./Pages/Spectateur.jsx";
 import SpectateurTable from "./Pages/SpectateurTable.jsx";
 import GithubCallback from "./Pages/GithubCallback.jsx";
 
@@ -26,21 +26,58 @@ function Routeur() {
 		}
 		return true;
 	});
+	const [isSpectateur, setIsSpectateur] = useState(false);
 	const [isGuest, setIsGuest] = useState(() => sessionStorage.getItem("guest") === "true");
+	const fond = <Salon isLoggedIn={false} setIsLoggedIn={setIsLoggedIn} />;
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
 			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
 			<AuthPopup isLoggedIn={isLoggedIn} isGuest={isGuest} setIsGuest={setIsGuest} />
 			<Routes>
-				<Route path="/" element={<App isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
 				<Route
-					path="/register"
-					element={isLoggedIn ? <Navigate to="/" replace /> : <Register setIsLoggedIn={setIsLoggedIn} />}
+					path="/"
+					element={
+						isLoggedIn
+							? <Salon setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} isSpectateur={false} />
+							: isGuest || isSpectateur
+								? <Navigate to="/spectateur" replace />
+								: <Navigate to="/login" replace />
+					}
 				/>
 				<Route
 					path="/login"
-					element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login setIsLoggedIn={setIsLoggedIn} />}
+					element={
+						isLoggedIn ? (
+							<Navigate to="/" replace />
+						) : (
+							<>
+								{fond}
+								<Login setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} />
+							</>
+						)
+					}
+				/>
+				<Route
+					path="/register"
+					element={
+						isLoggedIn ? (
+							<Navigate to="/" replace />
+						) : (
+							<>
+								{fond}
+								<Register setIsLoggedIn={setIsLoggedIn} />
+							</>
+						)
+					}
+				/>
+				<Route
+					path="/spectateur"
+					element={
+						isGuest || isSpectateur || (!isLoggedIn && sessionStorage.getItem("guest") === "true")
+							? <Salon setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} isSpectateur={true} />
+							: <Navigate to="/login" replace />
+					}
 				/>
 				<Route
 					path="/auth/github/callback"
@@ -51,16 +88,8 @@ function Routeur() {
 					element={isLoggedIn ? <Compte /> : <Navigate to="/login" replace />}
 				/>
 				<Route
-					path="/jeux/blackjack"
-					element={isLoggedIn ? <Blackjack isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
-				/>
-				<Route
 					path="/dashboard"
 					element={<Navigate to="/" replace />}
-				/>
-				<Route
-					path="/spectateur"
-					element={<Spectateur />}
 				/>
 				<Route
 					path="/spectateur/:id"

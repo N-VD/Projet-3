@@ -81,7 +81,7 @@ function GithubCallback({ setIsLoggedIn }) {
 			<div className="container">
 				<div className="columns is-centered">
 					<div className="column is-one-third">
-						<div className="box">
+						<div className="box" style={{ border : "1px solid #d6d6d6"}}>
 							<h1 className="title">Connexion GitHub</h1>
 							{inscription ? (
 								<form onSubmit={handleSubmit}>
