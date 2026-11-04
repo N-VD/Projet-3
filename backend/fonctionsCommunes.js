@@ -26,6 +26,29 @@ const jwt_mdp = "Belle_Vibe_Casino2026"
     }
 }
 
+// Comme authentifier, mais laisse passer les invités sans token (req.user = null).
+// Un token présent mais invalide est quand même refusé (401) : le front sait alors qu'il doit le retirer.
+const authentifierOptionnel = (req, res, next) => {
+    if (!req.headers['authorization']) {
+        req.user = null
+        return next()
+    }
+    return authentifier(req, res, next)
+}
+
+// Entrée : token JWT (ou rien); sortie : le compte décodé, ou null s'il est absent, invalide ou inactif.
+// Pour Socket.IO, où un invité doit pouvoir se connecter quand même.
+function lireToken(token) {
+    if (!token) return null
+    try {
+        const user = jwt.verify(token, jwt_mdp)
+        if (user?.statut && user.statut.toLowerCase() !== "actif") return null
+        return user
+    } catch {
+        return null
+    }
+}
+
 function validerChamps(champs) {
     for (const [nom, valeur] of Object.entries(champs)) {
         if (valeur === undefined || valeur === null || valeur === '') {
@@ -67,4 +90,4 @@ function genererToken(compte) {
     );
 }
 
-module.exports = {authentifier, validerChamps, validerMotDePasse, validerAge, genererToken, jwt, jwt_mdp}
+module.exports = {authentifier, authentifierOptionnel, lireToken, validerChamps, validerMotDePasse, validerAge, genererToken, jwt, jwt_mdp}
