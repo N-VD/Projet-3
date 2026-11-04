@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import App from "./Pages/App.jsx";
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
 import Compte from "./Pages/Compte.jsx";
@@ -8,6 +7,7 @@ import Navbar from "./Pages/Navbar.jsx";
 import AuthPopup from "./Pages/AuthPopup.jsx";
 import Salon from "./Pages/Salon.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
+import BlackjackCamera from "./Pages/Blackjack_Camera.jsx";
 import SpectateurTable from "./Pages/SpectateurTable.jsx";
 import GithubCallback from "./Pages/GithubCallback.jsx";
 
@@ -86,6 +86,14 @@ function Routeur() {
 				<Route
 					path="/compte"
 					element={isLoggedIn ? <Compte /> : <Navigate to="/login" replace />}
+				/>
+				<Route
+					path="/jeux/blackjack"
+					element={isLoggedIn ? <Blackjack isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
+				/>
+				<Route
+					path="/jeux/blackjack-camera/:id"
+					element={isLoggedIn ? <BlackjackCamera /> : <Navigate to="/login" replace />}
 				/>
 				<Route
 					path="/dashboard"

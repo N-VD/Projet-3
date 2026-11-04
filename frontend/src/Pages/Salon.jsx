@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { connecterSocket, deconnecterSocket } from "../services/socket.js";
 import Blackjack from "./Blackjack.jsx";
 import {
 	API_URL,
@@ -24,20 +23,9 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 	const [chargement, setChargement] = useState(false);
 	const [message, setMessage] = useState("");
 
+	// Le lobby est en HTTP seulement : la connexion Socket.IO (et le "join") appartient à la table
 	useEffect(() => {
-		const socket = connecterSocket();
 		appeler(isSpectateur ? "/spectateur/salons" : "/salons");
-
-		socket.on("mise_a_jour_table", (data) => {
-			if (data.salons) {
-				setSalons(data.salons);
-			}
-		});
-
-		return () => {
-			socket.off("mise_a_jour_table");
-			deconnecterSocket();
-		};
 	}, [isSpectateur]);
 
 	async function appeler(chemin, options = {}) {
@@ -81,8 +69,6 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 			const salonNormalise = normaliserSalon(data.salon);
 			setSalon(salonNormalise);
 			await appeler("/salons");
-			const socket = connecterSocket();
-			socket.emit("rejoindre_salon", idSalon(data.salon));
 		}
 	}
 
@@ -129,8 +115,6 @@ function Salon({ setIsLoggedIn, setIsSpectateur, isSpectateur }) {
 		if (data?.salon) {
 			const salonNormalise = normaliserSalon(data.salon);
 			setSalon(salonNormalise);
-			const socket = connecterSocket();
-			socket.emit("rejoindre_salon", idS);
 			await appeler("/salons");
 		}
 	}

@@ -1,44 +1,63 @@
-const { Server } = require('socket.io');
+const { Server } = require("socket.io");
+const mongoose = require("mongoose");
+const Salon = require("../models/salon");
 
-/**
- * Initialise le serveur Socket.io et configure les événements de temps réel.
- * @param {http.Server} httpServer - Le serveur HTTP Node.js créé dans app.js
- * @returns {Server} L'instance de Socket.io
- */
 function initialiserSocketServer(httpServer) {
-    const io = new Server(httpServer, {
-        cors: {
-            origin: "http://localhost:5173",
-            methods: ["GET", "POST"]
-        }
-    });
+	const io = new Server(httpServer, {
+		cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] },
+		maxHttpBufferSize: 2e6, // images JPEG de la caméra
+	});
 
-    io.on('connection', (socket) => {
-        console.log(`Un joueur s'est connecté : ${socket.id}`);
+	io.on("connection", (socket) => {
 
-        // Rejoindre un salon de Blackjack
-        socket.on('rejoindre_salon', (codeSalon) => {
-            socket.join(codeSalon);
-            console.log(`Le joueur ${socket.id} a rejoint le salon : ${codeSalon}`);
-        });
+		if (socket.handshake.auth?.cle === process.env.CLE_DETECTION) {
+			socket.join("detection");
+			socket.on("cartes", ({ salonId, mains }) => {
+				io.to(String(salonId)).emit("cartes", mains);
+			});
+			return; // pas besoin des handlers des navigateurs
+		}
 
-        // Gérer une action de jeu et diffuser l'état complet du salon aux autres
-        socket.on('action_jeu', (data) => {
-            const { codeSalon, salonMaj } = data;
-            
-            // On diffuse le salon mis à jour à tous les joueurs présents dans ce salon (sauf l'expéditeur, ou à tout le monde avec io.to)
-            io.to(codeSalon).emit('mise_a_jour_table', {
-                salon: salonMaj,
-                message: `Mise à jour de la table pour le salon ${codeSalon}`
-            });
-        });
+		socket.on("join", async (salonId, ack) => {
+			const repondre = typeof ack === "function" ? ack : () => {}; // Blackjack.jsx n'attend pas de réponse
+			try {
+				if (!mongoose.isValidObjectId(salonId))
+					return repondre({ error: "Salon invalide." });
+				const salon = await Salon.findById(salonId);
+				if (!salon) return repondre({ error: "Salon introuvable." });
 
-        socket.on('disconnect', () => {
-            console.log(`Un joueur s'est déconnecté : ${socket.id}`);
-        });
-    });
+				// Une connexion suit un seul salon (socket.id est sa room personnelle : on la garde)
+				for (const room of socket.rooms) {
+					if (room !== socket.id) socket.leave(room);
+				}
+				const room = String(salon._id);
+				socket.join(room);
+				socket.data.salonId = room;
+				repondre({ salon });
+			} catch (err) {
+				console.error(err);
+				repondre({ error: "Erreur du serveur." });
+			}
+		});
 
-    return io;
+		// codeSalon = _id du salon (voir sauvegarder() dans Blackjack.jsx)
+		socket.on("game:action", ({ codeSalon, salonMaj }) => {
+			io.to(String(codeSalon)).emit("game:update", {
+				salon: salonMaj,
+				message: `Mise à jour de la table pour le salon ${codeSalon}`,
+			});
+		});
+
+		// Image JPEG de detection.py, relayée aux clients du salon
+		socket.on("frame", (image) => {
+			const salonId = socket.data.salonId;
+			if (!salonId || !Buffer.isBuffer(image)) return;
+			socket.to(salonId).volatile.emit("frame", image); // joueurs / spectateurs
+			io.to("detection").volatile.emit("frame", { salonId, image }); // service Python
+		});
+	});
+
+	return io;
 }
 
 module.exports = { initialiserSocketServer };

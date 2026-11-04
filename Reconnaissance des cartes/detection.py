@@ -34,6 +34,10 @@ Nouveau dans la v5 :
 
   Pour tester sans vrai serveur : python serveur_test.py (affiche ce qu'il recoit)
 
+  Envoi du feed video (JPEG) au backend via Socket.IO, evenement "frame" :
+
+    python detection.py --serveur http://localhost:3000 --salon <_id du salon>
+
 --- Notes de la v4 ---
 
 Nouveautes par rapport a la v3 :
@@ -869,6 +873,65 @@ class EnvoyeurAPI:
                 self.dernier_envoye = None   # on reessaiera au prochain changement / frame
 
 
+class EnvoyeurFrames:
+    """Envoie les images JPEG au backend via Socket.IO dans un thread separe.
+    - si le reseau est lent, seule la DERNIERE image en attente est envoyee
+    - si le serveur est coupe, python-socketio se reconnecte tout seul"""
+
+    def __init__(self, url, salon_id, fps=15, largeur=640, qualite=70):
+        import socketio  # ici : le script reste utilisable sans python-socketio si --serveur n'est pas donne
+
+        self.salon_id = salon_id
+        self.intervalle = 1 / fps
+        self.largeur = largeur
+        self.qualite = qualite
+        self.dernier_envoi = 0
+        self.file = queue.Queue(maxsize=1)
+        self.sio = socketio.Client(reconnection=True)
+        self.statut = "connexion..."
+        self.sio.on("connect", lambda: setattr(self, "statut", "connecte"))
+        self.sio.on("disconnect", lambda *_: setattr(self, "statut", "deconnecte"))
+        threading.Thread(target=self._connecter, args=(url,), daemon=True).start()
+        threading.Thread(target=self._boucle, daemon=True).start()
+
+    def _connecter(self, url):
+        # La reconnexion automatique de python-socketio ne marche qu'apres une 1re connexion reussie :
+        # si le backend n'est pas encore demarre, on reessaie ici
+        while True:
+            try:
+                self.sio.connect(url, wait_timeout=5)
+                return
+            except Exception as e:
+                self.statut = "serveur injoignable"
+                print(f"[FRAMES] Connexion impossible vers {url} : {e} (nouvel essai dans 3 s)")
+                time.sleep(3)
+
+    def publier(self, image):
+        maintenant = time.time()
+        if maintenant - self.dernier_envoi < self.intervalle:
+            return  # limite les fps envoyes, la detection continue a pleine vitesse
+        self.dernier_envoi = maintenant
+        try:
+            self.file.get_nowait()  # jette l'ancienne image pas encore envoyee
+        except queue.Empty:
+            pass
+        self.file.put_nowait(image.copy())
+
+    def _boucle(self):
+        while True:
+            image = self.file.get()
+            if not self.sio.connected:
+                continue
+            h, w = image.shape[:2]
+            petite = cv2.resize(image, (self.largeur, int(h * self.largeur / w)))
+            ok, jpeg = cv2.imencode(".jpg", petite, [cv2.IMWRITE_JPEG_QUALITY, self.qualite])
+            if ok:
+                try:
+                    self.sio.emit("frame", {"salonId": self.salon_id, "image": jpeg.tobytes()})
+                except Exception as e:
+                    print(f"[FRAMES] Envoi impossible : {e}")
+
+
 # ---------------------------------------------------------------------------
 # MODE CALIBRATION
 # ---------------------------------------------------------------------------
@@ -999,13 +1062,18 @@ def dessiner_main(affichage, main, pistes_main):
     cv2.putText(affichage, texte, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, couleur, 2)
 
 
-def mode_detection(url_api=None):
+def mode_detection(url_api=None, url_serveur=None, salon_id=None):
     charger_config_coin()
     templates = charger_templates()
     suivi = SuiviCartes()
     envoyeur = EnvoyeurAPI(url_api) if url_api else None
     if envoyeur:
         print(f"Envoi des mains vers {url_api}")
+    envoyeur_frames = EnvoyeurFrames(url_serveur, salon_id) if url_serveur and salon_id else None
+    if envoyeur_frames:
+        print(f"Envoi du feed video vers {url_serveur} (salon {salon_id})")
+    elif url_serveur or salon_id:
+        print("--serveur et --salon doivent etre donnes ensemble : feed video desactive.")
 
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
@@ -1054,8 +1122,11 @@ def mode_detection(url_api=None):
 
         nb_verrou = sum(p["rang_verrouille"] is not None for p in affichees)
         statut_api = f"  API: {envoyeur.statut}" if envoyeur else ""
+        statut_api += f"  Video: {envoyeur_frames.statut}" if envoyeur_frames else ""
         cv2.putText(affichage, f"Cartes: {len(affichees)}  verrouillees: {nb_verrou}  mains: {len(mains)}{statut_api}",
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        if envoyeur_frames:
+            envoyeur_frames.publier(affichage)  # mettre `frame` pour envoyer l'image sans les dessins
         cv2.imshow("Detection cartes + valeurs", affichage)
 
         touche = cv2.waitKey(1) & 0xFF
@@ -1084,6 +1155,10 @@ if __name__ == "__main__":
     parser.add_argument("--api", type=str, default=None,
                         help="URL de l'API ou envoyer les mains en POST JSON, "
                              "ex: http://localhost:5000/api/mains")
+    parser.add_argument("--serveur", type=str, default=None,
+                        help="URL du backend Socket.IO ou envoyer le feed video, ex: http://localhost:3000")
+    parser.add_argument("--salon", type=str, default=None,
+                        help="_id Mongo du salon a qui envoyer le feed video")
     args = parser.parse_args()
 
     DOSSIER_TEMPLATES = args.dossier
@@ -1091,4 +1166,4 @@ if __name__ == "__main__":
     if args.calibrer:
         mode_calibration(args.calibrer)
     else:
-        mode_detection(args.api)
+        mode_detection(args.api, args.serveur, args.salon)

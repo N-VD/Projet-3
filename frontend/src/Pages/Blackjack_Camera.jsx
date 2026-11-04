@@ -1,0 +1,177 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { connecterSocket } from "../services/socket.js";
+import "./Blackjack.css";
+import { lireUtilisateur } from "./reglesBlackjack/outils.js";
+
+const FPS_ENVOI = 10;
+const QUALITE_JPEG = 0.7;
+const DELAI_IMAGE_PERDUE = 3000; // ms sans image avant d'afficher « caméra coupée »
+
+/** Entrée : message d'erreur de getUserMedia; sortie : texte lisible pour le dealer. */
+function messageErreurCamera(erreur) {
+	if (erreur?.name === "NotAllowedError") return "Accès à la caméra refusé. Autorisez-la dans le navigateur.";
+	if (erreur?.name === "NotFoundError") return "Aucune caméra détectée sur cet ordinateur.";
+	if (erreur?.name === "NotReadableError") return "La caméra est déjà utilisée par un autre programme.";
+	return "Impossible d'ouvrir la caméra.";
+}
+
+/**
+ * Entrées : actif (ce client filme), socket, ref du <video> d'aperçu et setter du statut; sortie : aucune.
+ * Filme la webcam du dealer et envoie une image JPEG au backend FPS_ENVOI fois par seconde.
+ */
+function useCaptureCamera(actif, socket, videoRef, setStatut) {
+	useEffect(() => {
+		if (!actif || !socket) return undefined;
+		// getUserMedia n'existe que sur localhost ou en HTTPS
+		if (!navigator.mediaDevices?.getUserMedia) {
+			setStatut({ type: "erreur", texte: "La caméra exige localhost ou HTTPS." });
+			return undefined;
+		}
+
+		let flux = null;
+		let minuterie = null;
+		let annule = false; // le composant peut être démonté avant que la caméra réponde
+		let enCours = false;
+		const canvas = document.createElement("canvas");
+
+		(async () => {
+			try {
+				setStatut({ type: "info", texte: "Ouverture de la caméra..." });
+				flux = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+				if (annule) return flux.getTracks().forEach((piste) => piste.stop());
+
+				const video = videoRef.current;
+				video.srcObject = flux;
+				await video.play();
+				canvas.width = video.videoWidth;
+				canvas.height = video.videoHeight;
+				setStatut({ type: "succes", texte: "Caméra en direct" });
+
+				minuterie = window.setInterval(() => {
+					if (enCours || !socket.connected) return; // l'image précédente n'est pas encore partie : on saute
+					enCours = true;
+					canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+					canvas.toBlob(async (blob) => {
+						if (blob && !annule) socket.emit("frame", await blob.arrayBuffer());
+						enCours = false;
+					}, "image/jpeg", QUALITE_JPEG);
+				}, 1000 / FPS_ENVOI);
+			} catch (erreur) {
+				if (!annule) setStatut({ type: "erreur", texte: messageErreurCamera(erreur) });
+			}
+		})();
+
+		return () => {
+			annule = true;
+			window.clearInterval(minuterie);
+			flux?.getTracks().forEach((piste) => piste.stop()); // éteint la webcam (et sa lumière)
+		};
+	}, [actif, socket, videoRef, setStatut]);
+}
+
+/** Entrées : actif (ce client regarde) et socket; sortie : URL de la dernière image reçue et indicateur « images récentes ». */
+function useImagesRecues(actif, socket) {
+	const [image, setImage] = useState(null);
+	const [enDirect, setEnDirect] = useState(false);
+	const derniereReception = useRef(0);
+
+	useEffect(() => {
+		if (!actif || !socket) return undefined;
+		let ancienne = null;
+
+		const surFrame = (data) => {
+			const url = URL.createObjectURL(new Blob([data], { type: "image/jpeg" }));
+			setImage(url);
+			if (ancienne) URL.revokeObjectURL(ancienne); // sinon chaque image reste en mémoire
+			ancienne = url;
+			derniereReception.current = Date.now();
+			setEnDirect(true);
+		};
+		const verification = window.setInterval(() => {
+			setEnDirect(Date.now() - derniereReception.current < DELAI_IMAGE_PERDUE);
+		}, 1000);
+
+		socket.on("frame", surFrame);
+		return () => {
+			socket.off("frame", surFrame);
+			window.clearInterval(verification);
+			if (ancienne) URL.revokeObjectURL(ancienne);
+			setImage(null);
+			setEnDirect(false);
+		};
+	}, [actif, socket]);
+
+	return { image, enDirect };
+}
+
+/** Entrée : aucune (l'id du salon vient de l'URL); sortie : le JSX de la table filmée. */
+function BlackjackCamera() {
+	const { id: salonId } = useParams();
+	const role = lireUtilisateur().role?.toLowerCase();
+	// Le dealer filme la table; les autres la regardent
+	const filme = role === "dealer" || role === "admin";
+	const [socket] = useState(connecterSocket);
+	const [message, setMessage] = useState("");
+	const [statutCamera, setStatutCamera] = useState(null);
+	const videoRef = useRef(null);
+
+	useEffect(() => {
+		socket.connect(); // reconnecte le même socket si le composant est remonté (StrictMode)
+		return () => socket.disconnect();
+	}, [socket]);
+
+	// Rejoindre la room Socket.IO du salon (et la rejoindre de nouveau après une reconnexion)
+	useEffect(() => {
+		const rejoindre = () => socket.emit("join", salonId, (reponse) => {
+			setMessage(reponse?.error ?? "");
+		});
+		rejoindre();
+		socket.on("connect", rejoindre);
+		return () => socket.off("connect", rejoindre);
+	}, [socket, salonId]);
+
+	useCaptureCamera(filme, socket, videoRef, setStatutCamera);
+	const { image, enDirect } = useImagesRecues(!filme, socket);
+
+	const couleurStatut = { succes: "is-success", erreur: "is-danger", info: "is-info" };
+
+	return (
+		<section className="section">
+			<div className="container">
+				<div className="level is-mobile mb-4">
+					<div className="level-left"><div className="level-item">
+						<Link to="/" className="button is-small is-text"><span className="icon"><i className="fas fa-arrow-left" /></span><span>Tous les jeux</span></Link>
+					</div></div>
+				</div>
+
+				<div className="bj-table">
+					<div className="level is-mobile">
+						<div className="level-left" />
+						<div className="level-right"><span className="tag is-dark">Salon {salonId}</span></div>
+					</div>
+					<h1 className="title has-text-centered">Blackjack</h1>
+					<p className="subtitle is-6 has-text-centered">{filme ? "Vous filmez cette table" : "Table réelle en direct"}</p>
+
+					<div className="bj-zone">
+						<div className="bj-camera">
+							{filme
+								? <video ref={videoRef} muted playsInline aria-label="Aperçu de votre caméra" />
+								: image
+									? <img src={image} alt="Caméra de la table" />
+									: <p className="bj-camera-attente">En attente de la caméra du dealer...</p>}
+						</div>
+						{filme && statutCamera && <span className={`tag is-medium ${couleurStatut[statutCamera.type]}`} role="status">{statutCamera.texte}</span>}
+						{!filme && image && <span className={`tag is-medium ${enDirect ? "is-success" : "is-danger"}`} role="status">
+							<span className="icon"><i className="fas fa-circle" /></span><span>{enDirect ? "En direct" : "Caméra coupée"}</span>
+						</span>}
+					</div>
+				</div>
+
+				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
+			</div>
+		</section>
+	);
+}
+
+export default BlackjackCamera;
