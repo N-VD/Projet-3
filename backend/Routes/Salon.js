@@ -5,6 +5,7 @@ const Salon = require('../models/salon');
 const Compte = require('../models/compte');
 const Transaction = require('../models/transaction');
 const { retourJoueur, valeurMain } = require('../jeux/reglementSalon');
+const { verifierTimeoutEtLimite } = require('./timeOut');
 const router = express.Router();
 
 
@@ -253,6 +254,8 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
     const hasPlayers = players !== undefined;
     const hasCurrentTurnSeat = currentTurnSeat !== undefined;
 
+
+
     // Juste une de des variables plus haut a besoin d'être changer
     if (!salonId ||!mongoose.isValidObjectId(salonId) || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
         || (hasStatus && !['waiting', 'playing', 'finished'].includes(status))
@@ -348,6 +351,9 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
                 for (const player of salon.players) {
                     const mise = Math.round(Number(player.bet) * 100) / 100;
                     if (!Number.isFinite(mise) || mise <= 0) continue;
+                    
+           
+                    await verifierTimeoutEtLimite(player.id_compte, pertesActuelles);//fonction usage
                     await appliquerMouvement(player.id_compte, mise, 'Mise blackjack en salon', true);
                 }
             }

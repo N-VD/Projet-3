@@ -102,6 +102,34 @@ router.delete('/deleteCompte', authentifier, async (req, res) => {
     res.json({ message: "Compte supprimé" });
 
 });
+router.patch('/limite-perte', authentifier, async (req, res) => {
+    try {
+        const idCompte = req.user.id; // On récupère l'ID du token de l'utilisateur connecté
+        const { limit_perte } = req.body;
+
+        // Validation basique (permet d'accepter un nombre positif ou null pour désactiver)
+        if (limit_perte !== null && (typeof limit_perte !== 'number' || limit_perte < 0)) {
+            return res.status(400).json({ error: "Veuillez entrer un montant limite valide." });
+        }
+
+        const compteMaj = await Compte.findByIdAndUpdate(
+            idCompte,
+            { $set: { limit_perte: limit_perte } },
+            { new: true, runValidators: true }
+        );
+
+        if (!compteMaj) {
+            return res.status(404).json({ error: "Compte non trouvé." });
+        }
+
+        res.status(200).json({ 
+            message: "Limite de perte mise à jour avec succès.", 
+            limit_perte: compteMaj.limit_perte 
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Erreur serveur lors de la mise à jour de la limite." });
+    }
+});
 
 // Récupérer les informations du compte connecté
 router.get('/me', authentifier, async (req, res) => {
