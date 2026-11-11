@@ -946,7 +946,7 @@ def mode_calibration(rang):
     os.makedirs(DOSSIER_TEMPLATES, exist_ok=True)
     charger_config_coin()
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     if not cap.isOpened():
@@ -1062,6 +1062,30 @@ def dessiner_main(affichage, main, pistes_main):
     cv2.putText(affichage, texte, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.9, couleur, 2)
 
 
+def traiter_image(frame, suivi, templates, blanc=None):
+    """Analyse une image, sans rien dessiner ni afficher (utilisable dans
+    Docker). `suivi` garde l'historique : il en faut un par camera / salon.
+    Retourne (mains, groupes, redressee) : les mains pour l'API, les pistes
+    de chaque main (pour dessiner) et la premiere carte non verrouillee
+    redressee (debug, ou None)."""
+    if blanc is None:
+        blanc = masque_blanc(frame)
+    pistes_vues = suivi.mettre_a_jour(detecter_cartes(frame, blanc))
+
+    redressee_debug = None
+    for piste in pistes_vues:
+        if piste["rang_verrouille"] is not None:
+            continue  # verrouillee : on ne relit plus
+        rang, score, redressee = lire_carte(frame, piste, templates, suivi.posees_apres(piste))
+        SuiviCartes.voter(piste, rang, score)
+        if redressee_debug is None:
+            redressee_debug = redressee
+
+    groupes = regrouper_mains(pistes_affichees(suivi))
+    mains = [decrire_main(i + 1, g) for i, g in enumerate(groupes)]
+    return mains, groupes, redressee_debug
+
+
 def mode_detection(url_api=None, url_serveur=None, salon_id=None):
     charger_config_coin()
     templates = charger_templates()
@@ -1075,7 +1099,7 @@ def mode_detection(url_api=None, url_serveur=None, salon_id=None):
     elif url_serveur or salon_id:
         print("--serveur et --salon doivent etre donnes ensemble : feed video desactive.")
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     if not cap.isOpened():
@@ -1091,30 +1115,19 @@ def mode_detection(url_api=None, url_serveur=None, salon_id=None):
             break
 
         blanc = masque_blanc(frame)
-        cartes = detecter_cartes(frame, blanc)
-        pistes_vues = suivi.mettre_a_jour(cartes)
+        mains, groupes, redressee = traiter_image(frame, suivi, templates, blanc)
         if voir_masque:
             cv2.imshow("DEBUG - Masque blanc (cartes = blanc)", cv2.resize(blanc, None, fx=0.5, fy=0.5))
+        if redressee is not None:
+            coin, zone = extraire_coin_debug(redressee)
+            cv2.imshow("DEBUG - Zone (carte en cours)", agrandir(zone, 2))
+            cv2.imshow("DEBUG - Coin (carte en cours)", agrandir(coin, 2))
 
-        debug_fait = False
-        for piste in pistes_vues:
-            if piste["rang_verrouille"] is not None:
-                continue  # verrouillee : on ne relit plus
-            rang, score, redressee = lire_carte(frame, piste, templates, suivi.posees_apres(piste))
-            SuiviCartes.voter(piste, rang, score)
-            if not debug_fait and redressee is not None:
-                coin, zone = extraire_coin_debug(redressee)
-                cv2.imshow("DEBUG - Zone (carte en cours)", agrandir(zone, 2))
-                cv2.imshow("DEBUG - Coin (carte en cours)", agrandir(coin, 2))
-                debug_fait = True
-
-        affichees = pistes_affichees(suivi)
+        affichees = [piste for g in groupes for piste in g]
         affichage = frame.copy()
         for piste in affichees:
             dessiner(affichage, piste, suivi.posees_apres(piste))
 
-        groupes = regrouper_mains(affichees)
-        mains = [decrire_main(i + 1, g) for i, g in enumerate(groupes)]
         for main, g in zip(mains, groupes):
             dessiner_main(affichage, main, g)
         if envoyeur:

@@ -33,6 +33,15 @@ services:
       - ./BackEnd:/app
       - /app/node_modules
 
+  detection:
+    build: "./Reconnaissance des cartes"
+    restart: unless-stopped
+    depends_on:
+      - backend
+    env_file: .env
+    environment:
+      BACKEND_URL: http://backend:3000
+
   frontend:
     build: ./frontend
     depends_on:
