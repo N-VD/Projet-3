@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken')
 const jwt_mdp = "Belle_Vibe_Casino2026"
+const Compte = require('./models/compte');
 
- const authentifier = (req, res, next) => {
+ const authentifier = async (req, res, next) => {
     // récupère le header 'authorization'
     const authHeader = req.headers['authorization']
     // sépare le "Bearer {token}" en 2 (séparés par l'espace) 
@@ -14,6 +15,24 @@ const jwt_mdp = "Belle_Vibe_Casino2026"
     try {
         // décode le token et le renvoye dans la requête dans user
         const userDecoded = jwt.verify(token, jwt_mdp)
+
+        // --- VÉRIFICATION EN DIRECT DANS LA BASE DE DONNÉES ---
+        const compteActuel = await Compte.findById(userDecoded.id);
+        if (!compteActuel) {
+            return res.status(401).json({ message: "Compte introuvable." });
+        }
+
+        // Vérifier si le compte est banni
+        if (compteActuel.ban_status) {
+            // Vérifier si un ban temporaire a expiré
+            if (compteActuel.ban_expires_at && new Date() > new Date(compteActuel.ban_expires_at)) {
+                compteActuel.ban_status = false;
+                compteActuel.ban_expires_at = null;
+                await compteActuel.save();
+            } else {
+                return res.status(403).json({ message: "Accès refusé. Votre compte a été suspendu." });
+            }
+        }
         req.user = userDecoded
         //if (req.user?.statut.toLowerCase() != "actif") {//ajout de ?
         if (req.user?.statut && req.user.statut.toLowerCase() !== "actif") {
