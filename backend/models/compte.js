@@ -9,6 +9,9 @@ const compteSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   role: { type: String, default: 'player' },
   montant: { type: Number, default: 0 },
+  limit_perte: { type: Number, default: null },
+  ban_status: { type: Boolean, default: false },
+  ban_expires_at: { type: Date, default: null },
   created_at: { type: Date, default: Date.now }
 });
 

@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const Compte = require('./models/Compte');
+const Compte = require('./models/compte');
 
 async function initComptesAutomatiques() {
     try {
