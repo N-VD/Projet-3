@@ -77,7 +77,7 @@ function GithubCallback({ setIsLoggedIn }) {
 	}
 
 	return (
-		<section className="section">
+		<section className="section" style={{ backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('/background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", minHeight: "100vh" }}>
 			<div className="container">
 				<div className="columns is-centered">
 					<div className="column is-one-third">
