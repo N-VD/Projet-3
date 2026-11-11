@@ -145,7 +145,16 @@ function Salon({ setIsLoggedIn, setSoldeGlobal, setIsSpectateur, isSpectateur })
 	}
 
 	return (
-		<section className="section">
+		<section
+			className="section"
+			style={{
+				backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('/background.jpg')",
+				backgroundSize: "cover",
+				backgroundPosition: "center",
+				backgroundRepeat: "no-repeat",
+				minHeight: "100vh",
+			}}
+		>
 			<div className="container">
 				<div className="level is-mobile" style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2.2rem" }}>
 					<h1 className="title is-2 mb-0">Salons de blackjack</h1>
