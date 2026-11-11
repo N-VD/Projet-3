@@ -31,6 +31,8 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 	const minuterieAnimation = useRef(null);
 	const [planAnimation, setPlanAnimation] = useState(null);
 	const [enAnimation, setEnAnimation] = useState(false);
+	const [banExpiresAt, setBanExpiresAt] = useState(null);
+	const [tempsRestant, setTempsRestant] = useState("");
 
 	useEffect(() => () => window.clearTimeout(minuterieAnimation.current), []);
 
@@ -94,6 +96,16 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 				setIsLoggedIn(false);
 				return null;
 			}
+			//banissement temporaire
+			if (response.status === 403) {
+				console.log("CONTENU REÇU 403 :", data);
+                if (data.ban_expires_at) {
+                    setBanExpiresAt(data.ban_expires_at);
+                } 
+                    setMessage(data.message || "Vous avez atteint votre limite de perte fixée. Votre compte a été suspendu par mesure de jeu responsable.");
+   					return null;
+              
+            }
 			if (!response.ok) {
 				setMessage(data.message || "Erreur du serveur.");
 				return null;
@@ -106,6 +118,29 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 			setChargement(false);
 		}
 	}
+	useEffect(() => {
+    if (!banExpiresAt) return;
+
+    const mettreAJourTemps = () => {
+        const maintenant = new Date();
+        const expiration = new Date(banExpiresAt);
+        const diffMs = expiration - maintenant;
+
+        if (diffMs <= 0) {
+            setTempsRestant("Le bannissement est terminé. Vous pouvez rejouer !");
+            setBanExpiresAt(null);
+        } else {
+            const minutes = Math.floor(diffMs / (1000 * 60));
+            const secondes = Math.floor((diffMs % (1000 * 60)) / 1000);
+            setTempsRestant(`Compte suspendu (Jeu responsable). Temps restant : ${minutes}m ${secondes}s`);
+        }
+    };
+
+    mettreAJourTemps(); // Exécution immédiate pour éviter le délai d'une seconde
+    const interval = setInterval(mettreAJourTemps, 1000);
+
+    return () => clearInterval(interval);
+}, [banExpiresAt]);
 
 	function payloadSalon(etat) {
 		return {
@@ -537,6 +572,11 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 				</div>
 
 				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
+				{tempsRestant && (
+                    <div className="notification is-danger is-light has-text-centered mt-4" role="alert">
+                        <p className="has-text-weight-bold">{tempsRestant}</p>
+                    </div>
+                )}
 			</div>
 		</section>
 	);

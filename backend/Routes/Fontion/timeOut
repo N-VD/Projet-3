@@ -1,0 +1,28 @@
+const Compte = require('../models/compte');
+
+// Ta fonction de vérification du timeout et de la limite
+async function verifierTimeoutEtLimite(userId, pertesActuelles) {
+    const compte = await Compte.findById(userId);
+    if (!compte) throw new Error("Compte introuvable.");
+
+    // 1. Vérifier si un timeout est toujours en cours
+    if (compte.ban_expires_at && new Date() < new Date(compte.ban_expires_at)) {
+        const tempsRestant = Math.ceil((new Date(compte.ban_expires_at) - new Date()) / (1000 * 60)); // en minutes
+        throw new Error(`Compte temporairement bloqué. Réessayez dans ${tempsRestant} minutes.`);
+    }
+
+    // 2. Vérifier si la limite de perte est atteinte
+    if (compte.limit_perte !== null && pertesActuelles >= compte.limit_perte) {
+        // Définir un timeout de 24 heures
+        const expiration = new Date();
+        expiration.setHours(expiration.getHours() + 24);
+
+        compte.ban_expires_at = expiration;
+        await compte.save();
+        
+        throw new Error("Limite de perte atteinte. Votre compte est suspendu pour 24 heures par mesure de jeu responsable.");
+    }
+}
+
+// N'oublie pas d'exporter la fonction
+module.exports = { verifierTimeoutEtLimite };

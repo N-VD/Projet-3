@@ -37,6 +37,11 @@ export default function Compte({ setSoldeGlobal }) {
   const [motDePasseActuel, setMotDePasseActuel] = useState("");
   const [nouveauMotDePasse, setNouveauMotDePasse] = useState("");
   const [afficherModificationMotDePasse, setAfficherModificationMotDePasse] = useState(false);
+  // Nouveaux états pour la limite de perte
+  const [limitPerte, setLimitPerte] = useState(null);
+  const [nouvelleLimitPerte, setNouvelleLimitPerte] = useState("");
+  const [afficherModificationLimitPerte, setAfficherModificationLimitPerte] = useState(false);
+  //
   const [message, setMessage] = useState("");
   const [montantAjout, setMontantAjout] = useState("");
   const [afficherAjout, setAfficherAjout] = useState(false);
@@ -162,6 +167,32 @@ export default function Compte({ setSoldeGlobal }) {
     }
   };
 
+  //ajouter limite de perte
+  const modifierLimitePerte = async (limite) => {
+    if (!token) {
+      setMessage("Vous devez être connecté pour effectuer cette action.");
+      return false;
+    }
+    try {
+      const response = await fetch(`${API_URL}/limite-perte`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ limit_perte: limite }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || data.message || "Impossible de modifier la limite de perte.");
+      setLimitPerte(data.limit_perte);
+      setMessage("");
+      return true;
+    } catch (error) {
+      setMessage(error.message);
+      return false;
+    }
+  };
+
   // Fetch le solde et les informations du compte connecté lors du montage du composant
   useEffect(() => {
     if (!token) {
@@ -185,6 +216,7 @@ export default function Compte({ setSoldeGlobal }) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || "Impossible de charger les informations du compte.");
         setNom(data.nom);
+        setLimitPerte(data.limit_perte); // Récupérer la limite de perte
       })
       .catch((error) => setMessage(error.message));
 
@@ -252,11 +284,27 @@ export default function Compte({ setSoldeGlobal }) {
       setAfficherModificationMotDePasse(false);
     }
   };
+  // Fonction pour valider la limite de perte
+  const validerLimitePerte = async (event) => {
+    event.preventDefault();
+    const valeur = nouvelleLimitPerte === "" ? null : Number(nouvelleLimitPerte);
+
+    if (valeur !== null && (!Number.isFinite(valeur) || valeur < 0)) {
+      setMessage("Veuillez entrer une limite de perte valide.");
+      return;
+    }
+
+    if (await modifierLimitePerte(valeur)) {
+      setNouvelleLimitPerte("");
+      setAfficherModificationLimitPerte(false);
+    }
+  };
 
   // Fonction pour ouvrir le formulaire de modification du nom d'utilisateur ou du mot de passe
   const ouvrirFormulaire = (formulaire) => {
     setAfficherModificationNom(formulaire === "nom");
     setAfficherModificationMotDePasse(formulaire === "motDePasse");
+    setAfficherModificationLimitPerte(formulaire === "limitePerte");
     setAfficherAjout(formulaire === "ajout");
     setAfficherRetrait(formulaire === "retrait");
   };
@@ -299,6 +347,20 @@ export default function Compte({ setSoldeGlobal }) {
                 }}
               >
                 Modifier le mot de passe
+              </button>
+            )}
+            {/* --- BOUTON DE LA LIMITE MIS EN COMMENTAIRE ---*/}
+            {!afficherModificationLimitPerte && (
+              <button
+                className="button is-warning"
+                type="button"
+                onClick={() => {
+                  setNouvelleLimitPerte(limitPerte !== null ? limitPerte : "");
+                  ouvrirFormulaire("limitePerte");
+                  setMessage("");
+                }}
+              >
+                Définir limite de perte
               </button>
             )}
           </div>
@@ -388,6 +450,46 @@ export default function Compte({ setSoldeGlobal }) {
               </form>
             </div>
           ) : null}
+          {/* Formulaire de modification de la limite de perte */}
+          {afficherModificationLimitPerte ? (
+            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
+              <form onSubmit={validerLimitePerte}>
+                <h2 className="title is-4">Définir votre limite de perte</h2>
+                <p className="is-size-7 mb-3">Si votre solde descend à ce montant ou en dessous, votre compte sera automatiquement suspendu (jeu responsable).</p>
+                <div className="field">
+                  <label className="label" htmlFor="limite-perte">Seuil de solde critique ($)</label>
+                  <div className="control">
+                    <input
+                      id="limite-perte"
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={nouvelleLimitPerte}
+                      onChange={(event) => setNouvelleLimitPerte(event.target.value)}
+                      placeholder="Laisser vide ou 0 pour désactiver"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="buttons is-centered mb-0">
+                  <button className="button is-warning" type="submit">Valider</button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setAfficherModificationLimitPerte(false);
+                      setNouvelleLimitPerte("");
+                      setMessage("");
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : null}
+          
           {!afficherAjout && !afficherRetrait && (
             <h1 className="title is-2 mb-5">Votre solde</h1>
           )}
