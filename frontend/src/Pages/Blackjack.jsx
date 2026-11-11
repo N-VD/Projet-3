@@ -445,7 +445,7 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 	const formatArgent = (montant) => `${Number(montant).toFixed(2)} $`;
 
 	return (
-		<section className="section">
+		<section className="section" style={{ backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('/background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", minHeight: "100vh" }}>
 			<div className="container">
 				<div className="bj-table">
 					<div className="level is-mobile">

@@ -1,54 +1,22 @@
 import { useEffect, useState } from "react";
 import { notifierSoldeMisAJour } from "../services/solde.js";
-
 const API_URL = "http://localhost:3000";
-
-// Fonction pour formater la date d'une transaction, purement utile pour l'affichage, ne modifie pas la date originale
-function formaterDateTransaction(valeur) {
-  const date = new Date(valeur);
-  const annee = date.getFullYear();
-  const mois = String(date.getMonth() + 1).padStart(2, "0");
-  const jour = String(date.getDate()).padStart(2, "0");
-  const heure = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  return `${annee}-${mois}-${jour}, ${heure}h${minutes}`;
-}
-
-// Fonction pour récupérer l'historique des transactions
-async function recupererTransactions(token) {
-  const response = await fetch(`${API_URL}/transactions`, {
-    headers: { Authorization: "Bearer " + token },
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || "Impossible de charger l'historique des transactions.");
-  }
-  return data.transactions;
-}
 
 export default function Compte({ setSoldeGlobal }) {
 
   // Déclaration des états pour le solde, le nom de l'utilisateur et les messages d'erreur
   const [solde, setSolde] = useState(null);
+  const [modifierSolde, setModifierSolde] = useState(false);
   const [nom, setNom] = useState("");
   const [nouveauNom, setNouveauNom] = useState("");
   const [afficherModificationNom, setAfficherModificationNom] = useState(false);
   const [motDePasseActuel, setMotDePasseActuel] = useState("");
   const [nouveauMotDePasse, setNouveauMotDePasse] = useState("");
   const [afficherModificationMotDePasse, setAfficherModificationMotDePasse] = useState(false);
-  // Nouveaux états pour la limite de perte
-  const [limitPerte, setLimitPerte] = useState(null);
-  const [nouvelleLimitPerte, setNouvelleLimitPerte] = useState("");
-  const [afficherModificationLimitPerte, setAfficherModificationLimitPerte] = useState(false);
-  //
   const [message, setMessage] = useState("");
-  const [montantAjout, setMontantAjout] = useState("");
-  const [afficherAjout, setAfficherAjout] = useState(false);
-  const [montantRetrait, setMontantRetrait] = useState("");
-  const [afficherRetrait, setAfficherRetrait] = useState(false);
-  const [transactions, setTransactions] = useState([]);
+  const [montantArgent, setMontantArgent] = useState("");
   const token = localStorage.getItem("token");
+  const [supprimerCompte, setSupprimerCompte] = useState(false);
 
   // Fonction pour ajouter de l'argent au compte
   const ajouterArgent = async (montant) => {
@@ -71,11 +39,6 @@ export default function Compte({ setSoldeGlobal }) {
       setSoldeGlobal(data.compte.montant);
       notifierSoldeMisAJour(data.compte.montant);
       setMessage("");
-      try {
-        setTransactions(await recupererTransactions(token));
-      } catch (error) {
-        setMessage(error.message);
-      }
       return true;
     } catch (error) {
       setMessage(error.message);
@@ -104,11 +67,6 @@ export default function Compte({ setSoldeGlobal }) {
       setSoldeGlobal(data.compte.montant);
       notifierSoldeMisAJour(data.compte.montant);
       setMessage("");
-      try {
-        setTransactions(await recupererTransactions(token));
-      } catch (error) {
-        setMessage(error.message);
-      }
       return true;
     } catch (error) {
       setMessage(error.message);
@@ -167,32 +125,6 @@ export default function Compte({ setSoldeGlobal }) {
     }
   };
 
-  //ajouter limite de perte
-  const modifierLimitePerte = async (limite) => {
-    if (!token) {
-      setMessage("Vous devez être connecté pour effectuer cette action.");
-      return false;
-    }
-    try {
-      const response = await fetch(`${API_URL}/limite-perte`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ limit_perte: limite }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || data.message || "Impossible de modifier la limite de perte.");
-      setLimitPerte(data.limit_perte);
-      setMessage("");
-      return true;
-    } catch (error) {
-      setMessage(error.message);
-      return false;
-    }
-  };
-
   // Fetch le solde et les informations du compte connecté lors du montage du composant
   useEffect(() => {
     if (!token) {
@@ -216,45 +148,29 @@ export default function Compte({ setSoldeGlobal }) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || "Impossible de charger les informations du compte.");
         setNom(data.nom);
-        setLimitPerte(data.limit_perte); // Récupérer la limite de perte
       })
       .catch((error) => setMessage(error.message));
 
-    recupererTransactions(token)
-      .then(setTransactions)
-      .catch((error) => setMessage(error.message));
   }, [token]);
 
 
   // Fonction pour valider l'ajout d'argent
-  const validerAjout = async (event) => {
-    event.preventDefault();
-    const montant = Number(montantAjout);
+  const validerArgent = async (typeAction) => {
+    const montant = Number(montantArgent);
 
     if (!Number.isFinite(montant) || montant <= 0) {
       setMessage("Veuillez entrer un montant supérieur à zéro.");
       return;
     }
 
-    if (await ajouterArgent(montant)) {
-      setMontantAjout("");
-      setAfficherAjout(false);
-    }
-  };
+    const succes = typeAction === "ajout"
+      ? await ajouterArgent(montant)
+      : await retirerArgent(montant);
 
-  // Fonction pour valider le retrait d'argent
-  const validerRetrait = async (event) => {
-    event.preventDefault();
-    const montant = Number(montantRetrait);
-
-    if (!Number.isFinite(montant) || montant <= 0) {
-      setMessage("Veuillez entrer un montant supérieur à zéro.");
-      return;
-    }
-
-    if (await retirerArgent(montant)) {
-      setMontantRetrait("");
-      setAfficherRetrait(false);
+    if (succes) {
+      setMontantArgent("");
+      setModifierSolde(false);
+      setMessage("");
     }
   };
 
@@ -284,342 +200,258 @@ export default function Compte({ setSoldeGlobal }) {
       setAfficherModificationMotDePasse(false);
     }
   };
-  // Fonction pour valider la limite de perte
-  const validerLimitePerte = async (event) => {
-    event.preventDefault();
-    const valeur = nouvelleLimitPerte === "" ? null : Number(nouvelleLimitPerte);
-
-    if (valeur !== null && (!Number.isFinite(valeur) || valeur < 0)) {
-      setMessage("Veuillez entrer une limite de perte valide.");
-      return;
-    }
-
-    if (await modifierLimitePerte(valeur)) {
-      setNouvelleLimitPerte("");
-      setAfficherModificationLimitPerte(false);
-    }
-  };
-
-  // Fonction pour ouvrir le formulaire de modification du nom d'utilisateur ou du mot de passe
-  const ouvrirFormulaire = (formulaire) => {
-    setAfficherModificationNom(formulaire === "nom");
-    setAfficherModificationMotDePasse(formulaire === "motDePasse");
-    setAfficherModificationLimitPerte(formulaire === "limitePerte");
-    setAfficherAjout(formulaire === "ajout");
-    setAfficherRetrait(formulaire === "retrait");
-  };
 
   // Rendu du composant
   return (
-    <section className="section is-flex is-flex-direction-column is-align-items-center has-text-centered">
-      <h1 className="title is-2 mb-5">Bienvenue, {nom}!</h1>
-      <div
-        className="is-flex is-flex-direction-column-mobile is-align-items-center is-justify-content-center"
-        style={{ "4rem" : "0", width: "100%" }}
-      >
-        <div style={{ width: "min(900px, 90vw)" }}>
-          <div
-            className={`is-flex is-justify-content-center is-align-items-center is-flex-wrap-wrap ${
-              afficherModificationNom || afficherModificationMotDePasse ? "mb-0" : "mb-6"
-            }`}
-            style={{ width: "100%", gap: "0.75rem" }}
-          >
-            {!afficherModificationNom && (
-              <button
-                className="button is-primary"
-                type="button"
-                onClick={() => {
-                  setNouveauNom(nom);
-                  ouvrirFormulaire("nom");
-                  setMessage("");
-                }}
-              >
-                Modifier le nom d'utilisateur
-              </button>
-            )}
-            {!afficherModificationMotDePasse && (
-              <button
-                className="button is-primary"
-                type="button"
-                onClick={() => {
-                  ouvrirFormulaire("motDePasse");
-                  setMessage("");
-                }}
-              >
-                Modifier le mot de passe
-              </button>
-            )}
-            {/* --- BOUTON DE LA LIMITE MIS EN COMMENTAIRE ---*/}
-            {!afficherModificationLimitPerte && (
-              <button
-                className="button is-warning"
-                type="button"
-                onClick={() => {
-                  setNouvelleLimitPerte(limitPerte !== null ? limitPerte : "");
-                  ouvrirFormulaire("limitePerte");
-                  setMessage("");
-                }}
-              >
-                Définir limite de perte
-              </button>
-            )}
-          </div>
-          {afficherModificationNom ? (
-            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
-              <form onSubmit={validerNomUtilisateur}>
-                <h2 className="title is-4">Modifier le nom d'utilisateur</h2>
-                <div className="field">
-                  <label className="label" htmlFor="nouveau-nom">Nouveau nom d'utilisateur</label>
-                  <div className="control">
-                    <input
-                      id="nouveau-nom"
-                      className="input"
-                      type="text"
-                      value={nouveauNom}
-                      onChange={(event) => setNouveauNom(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-primary" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherModificationNom(false);
-                      setNouveauNom("");
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : null}
-          {afficherModificationMotDePasse ? (
-            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
-              <form onSubmit={validerMotDePasse}>
-                <h2 className="title is-4">Modifier le mot de passe</h2>
-                <div className="field">
-                  <label className="label" htmlFor="mot-de-passe-actuel">Mot de passe actuel</label>
-                  <div className="control">
-                    <input
-                      id="mot-de-passe-actuel"
-                      className="input"
-                      type="password"
-                      autoComplete="current-password"
-                      value={motDePasseActuel}
-                      onChange={(event) => setMotDePasseActuel(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="field">
-                  <label className="label" htmlFor="nouveau-mot-de-passe">Nouveau mot de passe</label>
-                  <div className="control">
-                    <input
-                      id="nouveau-mot-de-passe"
-                      className="input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={nouveauMotDePasse}
-                      onChange={(event) => setNouveauMotDePasse(event.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-primary" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherModificationMotDePasse(false);
-                      setMotDePasseActuel("");
-                      setNouveauMotDePasse("");
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : null}
-          {/* Formulaire de modification de la limite de perte */}
-          {afficherModificationLimitPerte ? (
-            <div className="box" style={{ width: "min(520px, 90vw)", margin: "1rem auto" }}>
-              <form onSubmit={validerLimitePerte}>
-                <h2 className="title is-4">Définir votre limite de perte</h2>
-                <p className="is-size-7 mb-3">Si votre solde descend à ce montant ou en dessous, votre compte sera automatiquement suspendu (jeu responsable).</p>
-                <div className="field">
-                  <label className="label" htmlFor="limite-perte">Seuil de solde critique ($)</label>
-                  <div className="control">
-                    <input
-                      id="limite-perte"
-                      className="input"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={nouvelleLimitPerte}
-                      onChange={(event) => setNouvelleLimitPerte(event.target.value)}
-                      placeholder="Laisser vide ou 0 pour désactiver"
-                      autoFocus
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-warning" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherModificationLimitPerte(false);
-                      setNouvelleLimitPerte("");
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : null}
-          
-          {!afficherAjout && !afficherRetrait && (
-            <h1 className="title is-2 mb-5">Votre solde</h1>
-          )}
-          <div className="box" style={{ width: "min(520px, 90vw)", margin: "0 auto" }}>
-            {afficherAjout ? (
-              <form onSubmit={validerAjout}>
-                <h2 className="title is-4">Ajouter de l'argent</h2>
-                <div className="field">
-                  <label className="label" htmlFor="montant-ajout">Montant à ajouter</label>
-                  <div className="control">
-                    <input
-                      id="montant-ajout"
-                      className="input"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={montantAjout}
-                      onChange={(event) => setMontantAjout(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-primary" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherAjout(false);
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            ) : afficherRetrait ? (
-              <form onSubmit={validerRetrait}>
-                <h2 className="title is-4">Retirer de l'argent</h2>
-                <div className="field">
-                  <label className="label" htmlFor="montant-retrait">Montant à retirer</label>
-                  <div className="control">
-                    <input
-                      id="montant-retrait"
-                      className="input"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={montantRetrait}
-                      onChange={(event) => setMontantRetrait(event.target.value)}
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="buttons is-centered mb-0">
-                  <button className="button is-danger" type="submit">Valider</button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setAfficherRetrait(false);
-                      setMessage("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <p className="title is-3">
-                  {solde === null ? "--" : `${Number(solde).toFixed(2)} $`}
-                </p>
-              </>
-            )}
-            {message && <p className="has-text-danger mt-3">{message}</p>}
-          </div>
-          <div
-            className="is-flex is-justify-content-center is-align-items-center is-flex-wrap-wrap mt-3"
-            style={{ width: "100%", gap: "0.75rem" }}
-          >
-            <button
-              className="button is-primary"
-              type="button"
-              onClick={() => ouvrirFormulaire("ajout")}
-            >
-              Ajouter de l'argent
-            </button>
-            <button
-              className="button is-danger"
-              type="button"
-              onClick={() => ouvrirFormulaire("retrait")}
-            >
-              Retirer de l'argent
-            </button>
-          </div>
-          <h1 className="title is-2 mt-6 mb-5">Historique des transactions</h1>
-          <div className="box mt-5" style={{ width: "100%" }}>
-            {transactions.length === 0 ? (
-              <p>Aucune transaction pour le moment.</p>
-            ) : (
-              <div className="table-container">
-                <table className="table is-fullwidth is-striped">
-                  <thead>
-                    <tr>
-                      <th className="has-text-left">Date</th>
-                      <th className="has-text-right">Montant</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((transaction) => (
-                      <tr key={transaction._id}>
-                        <td className="has-text-left">
-                          {formaterDateTransaction(transaction.created_at)}
-                        </td>
-                        <td className={`has-text-right ${transaction.montant > 0 ? "has-text-success" : "has-text-danger"}`}>
-                          {transaction.montant > 0 ? "+" : ""}
-                          {Number(transaction.montant).toFixed(2)} $
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1.5rem",
+        backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('/background.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+        zIndex: 40,
+      }}
+    >
+      <div className="box" style={{ border: "1px solid #d6d6d6", borderRadius: "16px", boxShadow: "0 18px 45px rgba(15, 23, 42, 0.25)", padding: "1.5rem", width: "100%", maxWidth: "520px", transition: "all 0.2s ease" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem", gap: "12px" }}>
+          <h1 className="title" style={{ margin: 0 }}>
+            Bonjour, {nom}
+          </h1>
+          <span className="tag is-success is-medium">
+            <span className="icon"><i className="fas fa-coins" /></span>
+            <span>Solde : {solde !== null ? `${Number(solde).toFixed(2)} $` : "0.00 $"}</span>
+          </span>
         </div>
+        {!afficherModificationNom && !afficherModificationMotDePasse && !modifierSolde && !supprimerCompte && (
+          <h2 className="subtitle">Choisir une option</h2>
+        )}
+        {!afficherModificationNom && !afficherModificationMotDePasse && !modifierSolde && !supprimerCompte && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <button
+              className="button"
+              style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }}
+              type="button"
+              onClick={() => {
+                setAfficherModificationNom(true);
+                setAfficherModificationMotDePasse(false);
+              }}
+            >
+              Modifier le nom d'utilisateur
+            </button>
+
+            <button
+              className="button"
+              style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }}
+              type="button"
+              onClick={() => {
+                setAfficherModificationMotDePasse(true);
+                setAfficherModificationNom(false);
+              }}
+            >
+              Modifier le mot de passe
+            </button>
+            <button
+              className="button"
+              style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }}
+              type="button"
+              onClick={() => {
+                setModifierSolde(true);
+                setMontantArgent("");
+                setMessage("");
+              }}
+            >
+              Ajouter/retirer de l'argent
+            </button>
+            <button className="button is-danger" type="button" onClick={() => setSupprimerCompte(true)}>
+              Supprimer le compte
+            </button>
+          </div>
+        )}
+        {afficherModificationNom ? (
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
+            <form onSubmit={validerNomUtilisateur}>
+              <h2 className="title is-4">Modifier le nom d'utilisateur</h2>
+              <div className="field">
+                <label className="label" htmlFor="nouveau-nom">Nouveau nom d'utilisateur</label>
+                <div className="control">
+                  <input
+                    id="nouveau-nom"
+                    className="input"
+                    type="text"
+                    value={nouveauNom}
+                    onChange={(event) => setNouveauNom(event.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+              <div className="buttons is-centered mb-0">
+                <button className="button" style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }} type="submit">
+                  Valider
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setAfficherModificationNom(false);
+                    setNouveauNom("");
+                    setMessage("");
+                  }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+        {afficherModificationMotDePasse ? (
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
+            <form onSubmit={validerMotDePasse}>
+              <h2 className="title is-4">Modifier le mot de passe</h2>
+              <div className="field">
+                <label className="label" htmlFor="mot-de-passe-actuel">Mot de passe actuel</label>
+                <div className="control">
+                  <input
+                    id="mot-de-passe-actuel"
+                    className="input"
+                    type="password"
+                    autoComplete="current-password"
+                    value={motDePasseActuel}
+                    onChange={(event) => setMotDePasseActuel(event.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+              <div className="field">
+                <label className="label" htmlFor="nouveau-mot-de-passe">Nouveau mot de passe</label>
+                <div className="control">
+                  <input
+                    id="nouveau-mot-de-passe"
+                    className="input"
+                    type="password"
+                    autoComplete="new-password"
+                    value={nouveauMotDePasse}
+                    onChange={(event) => setNouveauMotDePasse(event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="buttons is-centered mb-0">
+                <button className="button" style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }} type="submit">
+                  Valider
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setAfficherModificationMotDePasse(false);
+                    setMotDePasseActuel("");
+                    setNouveauMotDePasse("");
+                    setMessage("");
+                  }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
+        {modifierSolde && (
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
+            <h2 className="title is-4">Ajouter ou retirer de l'argent</h2>
+            <div className="field">
+              <label className="label" htmlFor="montant-argent">Montant</label>
+              <div className="control">
+                <input
+                  id="montant-argent"
+                  className="input"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={montantArgent}
+                  onChange={(event) => setMontantArgent(event.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+              {message && <p className="help is-danger" style={{ marginTop: "0.5rem" }}>{message}</p>}
+            </div>
+            <div className="buttons is-centered mb-0">
+              <button
+                className="button"
+                style={{ background: "#0f7a3b", borderColor: "#0f7a3b", color: "#fff" }}
+                type="button"
+                onClick={() => validerArgent("ajout")}
+              >
+                Ajouter
+              </button>
+              <button
+                className="button"
+                style={{ background: "#dc3545", borderColor: "#dc3545", color: "#fff" }}
+                type="button"
+                onClick={() => validerArgent("retrait")}
+              >
+                Retirer
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={() => {
+                  setModifierSolde(false);
+                  setMontantArgent("");
+                  setMessage("");
+                }}
+              >
+                Retour
+              </button>
+            </div>
+          </div>
+        )}
+        {supprimerCompte ? (
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
+            <form onSubmit={validerMotDePasse}>
+              <h2 className="title is-4">Supprimer votre compte</h2>
+              <div className="field">
+                <label className="label" htmlFor="mot-de-passe-actuel">Entrer votre nom d'utilisateur pour confirmer</label>
+                <div className="control">
+                  <input
+                    className="input"
+                    type="text"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+              <div className="buttons is-centered mb-0">
+                <button className="button is-danger" type="submit">
+                  Supprimer
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setSupprimerCompte(false)
+                  }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
       </div>
-    </section>
+    </div>
   );
 }
