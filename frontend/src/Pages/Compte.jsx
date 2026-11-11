@@ -1,36 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import { notifierSoldeMisAJour } from "../services/solde.js";
 const API_URL = "http://localhost:3000";
-
-// Fonction pour formater la date d'une transaction, purement utile pour l'affichage, ne modifie pas la date originale
-function formaterDateTransaction(valeur) {
-  const date = new Date(valeur);
-  const annee = date.getFullYear();
-  const mois = String(date.getMonth() + 1).padStart(2, "0");
-  const jour = String(date.getDate()).padStart(2, "0");
-  const heure = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  return `${annee}-${mois}-${jour}, ${heure}h${minutes}`;
-}
-
-// Fonction pour récupérer l'historique des transactions
-async function recupererTransactions(token) {
-  const response = await fetch(`${API_URL}/transactions`, {
-    headers: { Authorization: "Bearer " + token },
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || "Impossible de charger l'historique des transactions.");
-  }
-  return data.transactions;
-}
 
 export default function Compte({ setSoldeGlobal }) {
 
   // Déclaration des états pour le solde, le nom de l'utilisateur et les messages d'erreur
-  const navigate = useNavigate();
   const [solde, setSolde] = useState(null);
   const [modifierSolde, setModifierSolde] = useState(false);
   const [nom, setNom] = useState("");
@@ -41,8 +15,8 @@ export default function Compte({ setSoldeGlobal }) {
   const [afficherModificationMotDePasse, setAfficherModificationMotDePasse] = useState(false);
   const [message, setMessage] = useState("");
   const [montantArgent, setMontantArgent] = useState("");
-  const [transactions, setTransactions] = useState([]);
   const token = localStorage.getItem("token");
+  const [supprimerCompte, setSupprimerCompte] = useState(false);
 
   // Fonction pour ajouter de l'argent au compte
   const ajouterArgent = async (montant) => {
@@ -65,11 +39,6 @@ export default function Compte({ setSoldeGlobal }) {
       setSoldeGlobal(data.compte.montant);
       notifierSoldeMisAJour(data.compte.montant);
       setMessage("");
-      try {
-        setTransactions(await recupererTransactions(token));
-      } catch (error) {
-        setMessage(error.message);
-      }
       return true;
     } catch (error) {
       setMessage(error.message);
@@ -98,11 +67,6 @@ export default function Compte({ setSoldeGlobal }) {
       setSoldeGlobal(data.compte.montant);
       notifierSoldeMisAJour(data.compte.montant);
       setMessage("");
-      try {
-        setTransactions(await recupererTransactions(token));
-      } catch (error) {
-        setMessage(error.message);
-      }
       return true;
     } catch (error) {
       setMessage(error.message);
@@ -187,9 +151,6 @@ export default function Compte({ setSoldeGlobal }) {
       })
       .catch((error) => setMessage(error.message));
 
-    recupererTransactions(token)
-      .then(setTransactions)
-      .catch((error) => setMessage(error.message));
   }, [token]);
 
 
@@ -208,7 +169,8 @@ export default function Compte({ setSoldeGlobal }) {
 
     if (succes) {
       setMontantArgent("");
-      setAfficherActionArgent(false);
+      setModifierSolde(false);
+      setMessage("");
     }
   };
 
@@ -237,13 +199,6 @@ export default function Compte({ setSoldeGlobal }) {
       setNouveauMotDePasse("");
       setAfficherModificationMotDePasse(false);
     }
-  };
-
-  // Fonction pour ouvrir le formulaire de modification du nom d'utilisateur ou du mot de passe
-  const ouvrirFormulaire = (formulaire) => {
-    setAfficherModificationNom(formulaire === "nom");
-    setAfficherModificationMotDePasse(formulaire === "motDePasse");
-    setModifierSolde(formulaire === "argent");
   };
 
   // Rendu du composant
@@ -278,10 +233,10 @@ export default function Compte({ setSoldeGlobal }) {
             <span>Solde : {solde !== null ? `${Number(solde).toFixed(2)} $` : "0.00 $"}</span>
           </span>
         </div>
-        {!afficherModificationNom && !afficherModificationMotDePasse && !modifierSolde && (
+        {!afficherModificationNom && !afficherModificationMotDePasse && !modifierSolde && !supprimerCompte && (
           <h2 className="subtitle">Choisir une option</h2>
         )}
-        {!afficherModificationNom && !afficherModificationMotDePasse && !modifierSolde && (
+        {!afficherModificationNom && !afficherModificationMotDePasse && !modifierSolde && !supprimerCompte && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <button
               className="button"
@@ -318,13 +273,13 @@ export default function Compte({ setSoldeGlobal }) {
             >
               Ajouter/retirer de l'argent
             </button>
-            <button className="button is-dark" type="button">
+            <button className="button is-danger" type="button" onClick={() => setSupprimerCompte(true)}>
               Supprimer le compte
             </button>
           </div>
         )}
         {afficherModificationNom ? (
-          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d6d6d6" }}>
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
             <form onSubmit={validerNomUtilisateur}>
               <h2 className="title is-4">Modifier le nom d'utilisateur</h2>
               <div className="field">
@@ -361,7 +316,7 @@ export default function Compte({ setSoldeGlobal }) {
           </div>
         ) : null}
         {afficherModificationMotDePasse ? (
-          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d6d6d6" }}>
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
             <form onSubmit={validerMotDePasse}>
               <h2 className="title is-4">Modifier le mot de passe</h2>
               <div className="field">
@@ -414,7 +369,7 @@ export default function Compte({ setSoldeGlobal }) {
           </div>
         ) : null}
         {modifierSolde && (
-          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d6d6d6" }}>
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
             <h2 className="title is-4">Ajouter ou retirer de l'argent</h2>
             <div className="field">
               <label className="label" htmlFor="montant-argent">Montant</label>
@@ -464,6 +419,38 @@ export default function Compte({ setSoldeGlobal }) {
             </div>
           </div>
         )}
+        {supprimerCompte ? (
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
+            <form onSubmit={validerMotDePasse}>
+              <h2 className="title is-4">Supprimer votre compte</h2>
+              <div className="field">
+                <label className="label" htmlFor="mot-de-passe-actuel">Entrer votre nom d'utilisateur pour confirmer</label>
+                <div className="control">
+                  <input
+                    className="input"
+                    type="text"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+              <div className="buttons is-centered mb-0">
+                <button className="button is-danger" type="submit">
+                  Supprimer
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setSupprimerCompte(false)
+                  }}
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : null}
       </div>
     </div>
   );
