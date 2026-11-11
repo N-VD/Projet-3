@@ -1,4 +1,5 @@
 const { Server } = require('socket.io');
+const { initialiserChat } = require('./chat')
 
 /**
  * Initialise le serveur Socket.io et configure les événements de temps réel.
@@ -15,6 +16,7 @@ function initialiserSocketServer(httpServer) {
 
     io.on('connection', (socket) => {
         console.log(`Un joueur s'est connecté : ${socket.id}`);
+        initialiserChat(io, socket);
 
         // Rejoindre un salon de Blackjack
         socket.on('rejoindre_salon', (codeSalon) => {

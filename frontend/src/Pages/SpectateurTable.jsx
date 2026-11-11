@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import "./Blackjack.css";
+import Chat from "./Chat.jsx"
 import { API_URL, Carte } from "./reglesBlackjack/outils.js";
 
 const LIBELLES_STATUT = { waiting: "En attente", playing: "En cours", finished: "Terminée" };
@@ -73,7 +74,9 @@ function SpectateurTable() {
 					</div>
 				)}
 
-				{salon && <div className="bj-table">
+
+				{salon && <div className="chat-layout">
+					<div className="bj-table">
 					<div className="level is-mobile">
 						<div className="level-left"><span className="tag is-dark">{LIBELLES_STATUT[salon.status] ?? salon.status}</span></div>
 						<div className="level-right"><span className="tag is-dark">Salon {id}</span></div>
@@ -102,6 +105,8 @@ function SpectateurTable() {
 							));
 						})}
 					</div>
+					</div>
+					<Chat salonId={id} />
 				</div>}
 			</div>
 		</section>
