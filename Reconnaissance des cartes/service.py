@@ -71,7 +71,6 @@ class Service:
         self.vus = {}            # salonId -> heure de la derniere image
         self.verrou = threading.Lock()
         self.nouvelle = threading.Event()
-        self.stats, self.dernier_bilan = {}, time.time()  # DEBUG temporaire
 
         self.sio.on("connect", lambda: print(f"Connecte a {BACKEND_URL}"))
         self.sio.on("disconnect", lambda *_: print("Deconnecte du backend"))
@@ -93,17 +92,16 @@ class Service:
         _, groupes, _ = traiter_image(frame, suivi, self.templates)
         mains = separer_zones(groupes, frame.shape[0])
 
-        # DEBUG temporaire
-        cv2.imwrite(f"/tmp/derniere_{salon_id}.jpg", frame)
-        stats = self.stats.setdefault(salon_id, {"images": 0, "cartes": 0, "taille": None})
-        stats["images"] += 1
-        stats["cartes"] = sum(len(g) for g in groupes)
-        stats["taille"] = frame.shape[:2]
+        cv2.imwrite(f"/tmp/derniere_{salon_id}.jpg", frame)  # DEBUG temporaire
 
         texte = json.dumps(mains, sort_keys=True)
         if texte != self.envoyes.get(salon_id) and self.sio.connected:
-            self.sio.emit("cartes", {"salonId": salon_id, "mains": mains})
+            message = {"salonId": salon_id, "mains": mains}
+            self.sio.emit("cartes", message)
             self.envoyes[salon_id] = texte
+            resume = [{"croupier": mains["croupier"]["cartes"]}] if mains["croupier"] else []
+            resume += [{f"main{m['id']}": m["cartes"]} for m in mains["joueurs"]]
+            print(f"[{salon_id}] {sum(len(g) for g in groupes)} carte(s) detectee(s), cartes = {resume}", flush=True)
 
     def oublier_inactifs(self):
         limite = time.time() - OUBLI_SALON_S
@@ -118,15 +116,14 @@ class Service:
             with self.verrou:
                 a_traiter, self.dernieres = self.dernieres, {}
             for salon_id, jpeg in a_traiter.items():
+                if salon_id not in self.vus:
+                    print(f"[{salon_id}] Premiere image recue")
                 self.vus[salon_id] = time.time()
                 try:
                     self.analyser(salon_id, jpeg)
                 except Exception as err:  # une image bizarre ne doit pas arreter le service
                     print(f"Erreur d'analyse (salon {salon_id}) : {err}")
             self.oublier_inactifs()
-            if time.time() - self.dernier_bilan > 5:  # DEBUG temporaire
-                print(f"Bilan 5 s : {self.stats or 'aucune image recue'}")
-                self.stats, self.dernier_bilan = {}, time.time()
 
     def demarrer(self):
         threading.Thread(target=self.boucle_analyse, daemon=True).start()

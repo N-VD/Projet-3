@@ -94,6 +94,7 @@ COIN_LARGEUR = 70
 COIN_HAUTEUR = 130
 
 DOSSIER_TEMPLATES = "templates_rangs_2"
+INDEX_CAMERA = 0
 FICHIER_CONFIG_COIN = "config_coin.json"
 SEUIL_CONFIANCE = 0.45
 
@@ -946,7 +947,7 @@ def mode_calibration(rang):
     os.makedirs(DOSSIER_TEMPLATES, exist_ok=True)
     charger_config_coin()
 
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(INDEX_CAMERA)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     if not cap.isOpened():
@@ -1099,7 +1100,7 @@ def mode_detection(url_api=None, url_serveur=None, salon_id=None):
     elif url_serveur or salon_id:
         print("--serveur et --salon doivent etre donnes ensemble : feed video desactive.")
 
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(INDEX_CAMERA)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     if not cap.isOpened():
@@ -1172,9 +1173,12 @@ if __name__ == "__main__":
                         help="URL du backend Socket.IO ou envoyer le feed video, ex: http://localhost:3000")
     parser.add_argument("--salon", type=str, default=None,
                         help="_id Mongo du salon a qui envoyer le feed video")
+    parser.add_argument("--camera", type=int, default=0,
+                        help="Index de la camera (defaut: 0 = webcam integree, 1 = webcam USB)")
     args = parser.parse_args()
 
     DOSSIER_TEMPLATES = args.dossier
+    INDEX_CAMERA = args.camera
 
     if args.calibrer:
         mode_calibration(args.calibrer)
