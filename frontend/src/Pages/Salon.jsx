@@ -10,6 +10,27 @@ function memeIdentifiant(premier, second) {
 	return premier != null && second != null && String(premier) === String(second);
 }
 
+/** Entrée : sièges libres; sortie : l'un d'eux au hasard. Hors du composant : Math.random y est interdit par le lint. */
+function siegeAuHasard(siegesLibres) {
+	return siegesLibres[Math.floor(Math.random() * siegesLibres.length)];
+}
+
+/** Entrées : chemin de l'API et options fetch; sortie : { response, data, token }. Aucun état React ici. */
+async function envoyer(chemin, options = {}) {
+	// /salons accepte les invités : le token n'est envoyé que si on en a un
+	const headers = { "Content-Type": "application/json" };
+	const token = localStorage.getItem("token");
+	if (token) {
+		headers.Authorization = `Bearer ${token}`;
+	}
+	const response = await fetch(`${API_URL}${chemin}`, {
+		...options,
+		headers,
+	});
+	const data = await response.json();
+	return { response, data, token };
+}
+
 function Salon({ setIsLoggedIn }) {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -28,17 +49,7 @@ function Salon({ setIsLoggedIn }) {
 		setMessage("");
 		setChargement(true);
 		try {
-			// /salons accepte les invités : le token n'est envoyé que si on en a un
-			const headers = { "Content-Type": "application/json" };
-			const token = localStorage.getItem("token");
-			if (token) {
-				headers.Authorization = `Bearer ${token}`;
-			}
-			const response = await fetch(`${API_URL}${chemin}`, {
-				...options,
-				headers,
-			});
-			const data = await response.json();
+			const { response, data, token } = await envoyer(chemin, options);
 			if (response.status === 401 && token) {
 				localStorage.removeItem("token");
 				setIsLoggedIn(false);
@@ -59,9 +70,28 @@ function Salon({ setIsLoggedIn }) {
 	}
 
 	// Le lobby est en HTTP seulement : la connexion Socket.IO (et le "join") appartient à la table
+	// Premier chargement : les états sont modifiés dans le .then, pas directement dans l'effet (règle du lint)
 	useEffect(() => {
-		appeler("/salons");
-	}, []);
+		let annule = false; // le composant a été démonté avant la réponse
+		envoyer("/salons")
+			.then(({ response, data, token }) => {
+				if (annule) return;
+				if (response.status === 401 && token) {
+					localStorage.removeItem("token");
+					setIsLoggedIn(false);
+				} else if (!response.ok) {
+					setMessage(data.message || "Erreur du serveur.");
+				} else if (data.salons) {
+					setSalons(data.salons);
+				}
+			})
+			.catch(() => {
+				if (!annule) setMessage("Impossible de joindre le serveur. Réessayez plus tard.");
+			});
+		return () => {
+			annule = true;
+		};
+	}, [setIsLoggedIn]);
 
 	/** Entrée : id du salon; ouvre sa table (le rôle dealer / joueur / spectateur est décidé par le socket). */
 	function ouvrirTable(salonId) {
@@ -92,7 +122,7 @@ function Salon({ setIsLoggedIn }) {
 				await appeler("/salons");
 				return;
 			}
-			const siegeAleatoire = siegesLibres[Math.floor(Math.random() * siegesLibres.length)];
+			const siegeAleatoire = siegeAuHasard(siegesLibres);
 			data = await appeler("/addPlayer", {
 				method: "POST",
 				body: JSON.stringify({ salonId: idS, seat_index: siegeAleatoire }),

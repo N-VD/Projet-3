@@ -8,17 +8,11 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
     const isComptePage = location.pathname === "/compte";
     const [solde, setSolde] = useState(null);
 
+    // Déconnecté : pas besoin de remettre solde à null, il n'est affiché que si isLoggedIn
+    // (et la déconnexion recharge la page)
     useEffect(() => {
-        if (!isLoggedIn) {
-            setSolde(null);
-            return;
-        }
-
         const token = localStorage.getItem("token");
-        if (!token) {
-            setSolde(null);
-            return;
-        }
+        if (!isLoggedIn || !token) return;
 
         fetch(`${API_URL}/solde`, {
             headers: { Authorization: `Bearer ${token}` },
