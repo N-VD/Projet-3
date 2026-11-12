@@ -24,11 +24,6 @@ function Salon({ setIsLoggedIn }) {
 	const [chargement, setChargement] = useState(false);
 	const [message, setMessage] = useState("");
 
-	// Le lobby est en HTTP seulement : la connexion Socket.IO (et le "join") appartient à la table
-	useEffect(() => {
-		appeler("/salons");
-	}, []);
-
 	async function appeler(chemin, options = {}) {
 		setMessage("");
 		setChargement(true);
@@ -62,6 +57,11 @@ function Salon({ setIsLoggedIn }) {
 			setChargement(false);
 		}
 	}
+
+	// Le lobby est en HTTP seulement : la connexion Socket.IO (et le "join") appartient à la table
+	useEffect(() => {
+		appeler("/salons");
+	}, []);
 
 	/** Entrée : id du salon; ouvre sa table (le rôle dealer / joueur / spectateur est décidé par le socket). */
 	function ouvrirTable(salonId) {

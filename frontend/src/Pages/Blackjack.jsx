@@ -68,6 +68,43 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		salonRef.current = salon;
 	}, [salon]);
 
+	function distribuer() {
+		if (!salon) return;
+		if (!salon.players.some((player) => player.bet > 0)) {
+			setMessage("Un joueur doit placer une mise avant le début de la manche.");
+			return;
+		}
+		const cartes = melangerSabot();
+		const players = salon.players.map((player) => {
+			if (player.bet <= 0) return { ...player, hand: [], hands: [], resultats: [], activeHand: 0, status: "waiting", isTurn: false };
+			const hand = [cartes.pop(), cartes.pop()];
+			const naturel = totalMain(hand) === 21;
+			return {
+				...player,
+				hand,
+				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				resultats: [],
+				activeHand: 0,
+				status: naturel ? "blackjack" : "playing",
+				isTurn: false,
+			};
+		});
+		const dealerHand = [cartes.pop(), cartes.pop()];
+		const premier = players.find((player) => player.status === "playing");
+		const prochain = premier?.seat_index ?? SIEGE_INACTIF;
+		const etat = {
+			...salon,
+			status: "playing",
+			dealer_hand: dealerHand,
+			players: players.map((player) => ({ ...player, isTurn: player.seat_index === prochain })),
+			currentTurnSeat: prochain,
+		};
+		setSabot(cartes);
+		setResultats({});
+		if (!premier) terminer(etat, cartes, {});
+		else sauvegarder(etat, cartes, {});
+	}
+
 	useEffect(() => {
 		lancementAutomatique.current = () => {
 			const salonActuel = salonRef.current;
@@ -186,43 +223,6 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 			? { ...player, bet: Number(mise) }
 			: player);
 		await sauvegarder({ ...salon, players, currentTurnSeat: SIEGE_INACTIF });
-	}
-
-	function distribuer() {
-		if (!salon) return;
-		if (!salon.players.some((player) => player.bet > 0)) {
-			setMessage("Un joueur doit placer une mise avant le début de la manche.");
-			return;
-		}
-		const cartes = melangerSabot();
-		const players = salon.players.map((player) => {
-			if (player.bet <= 0) return { ...player, hand: [], hands: [], resultats: [], activeHand: 0, status: "waiting", isTurn: false };
-			const hand = [cartes.pop(), cartes.pop()];
-			const naturel = totalMain(hand) === 21;
-			return {
-				...player,
-				hand,
-				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
-				resultats: [],
-				activeHand: 0,
-				status: naturel ? "blackjack" : "playing",
-				isTurn: false,
-			};
-		});
-		const dealerHand = [cartes.pop(), cartes.pop()];
-		const premier = players.find((player) => player.status === "playing");
-		const prochain = premier?.seat_index ?? SIEGE_INACTIF;
-		const etat = {
-			...salon,
-			status: "playing",
-			dealer_hand: dealerHand,
-			players: players.map((player) => ({ ...player, isTurn: player.seat_index === prochain })),
-			currentTurnSeat: prochain,
-		};
-		setSabot(cartes);
-		setResultats({});
-		if (!premier) terminer(etat, cartes, {});
-		else sauvegarder(etat, cartes, {});
 	}
 
 	async function terminer(etat, cartesRestantes, resultatsActuels) {
