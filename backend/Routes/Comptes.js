@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 const {authentifier , validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp} = require('../fonctionsCommunes');
 const {genererToken} = require('../fonctionsCommunes');
 const Compte = require('../models/compte');//ajout 
-const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -80,28 +79,24 @@ router.post('/login', async (req, res) => {
 });
 
 router.delete('/deleteCompte', authentifier, async (req, res) => {
-    const { id } = req.body;
-    
-    // Vérifier si l'utilisateur est un administrateur
-    if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
-        return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas autorisé à supprimer des comptes." });
+    const nomConfirmation = req.body?.nom;
+    if (typeof nomConfirmation !== 'string' || !nomConfirmation) {
+        return res.status(400).json({ message: "Veuillez confirmer votre nom d'utilisateur." });
     }
-    //validation contre les injection noSQL
-    if(!id||!mongoose.isValidObjectID(id)){
-        return res.status(400).json({message:"Idendifiant de compte invalide"});
-    }
-    
-    // Vérifier si le compte existe
-    const compte = await Compte.findById(id);
+
+    const compte = await Compte.findById(req.user.id);
     if (!compte) {
         return res.status(404).json({ message: "Compte non trouvé" });
     }
+    if (nomConfirmation !== compte.nom) {
+        return res.status(400).json({ message: "Le nom d'utilisateur ne correspond pas." });
+    }
 
-    // Supprimer le compte
-    await Compte.findByIdAndDelete(id);
+    await Compte.findByIdAndDelete(req.user.id);
     res.json({ message: "Compte supprimé" });
-
 });
+
+// Lier a la fonctionnalité de banissement du compte, pour le moment pas utilisé
 router.patch('/limite-perte', authentifier, async (req, res) => {
     try {
         const idCompte = req.user.id; // On récupère l'ID du token de l'utilisateur connecté
