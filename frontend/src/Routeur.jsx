@@ -118,7 +118,7 @@ function Routeur() {
 				/>
 				<Route
 					path="/compte"
-					element={isLoggedIn ? <Compte setSoldeGlobal={setSolde} /> : <Navigate to="/login" replace />}
+					element={isLoggedIn ? <Compte setSoldeGlobal={setSolde} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
 				/>
 				<Route
 					path="/dashboard"

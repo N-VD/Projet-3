@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { notifierSoldeMisAJour } from "../services/solde.js";
 const API_URL = "http://localhost:3000";
 
-export default function Compte({ setSoldeGlobal }) {
+export default function Compte({ setSoldeGlobal, setIsLoggedIn }) {
+  const navigate = useNavigate();
 
   // Déclaration des états pour le solde, le nom de l'utilisateur et les messages d'erreur
   const [solde, setSolde] = useState(null);
@@ -17,6 +19,8 @@ export default function Compte({ setSoldeGlobal }) {
   const [montantArgent, setMontantArgent] = useState("");
   const token = localStorage.getItem("token");
   const [supprimerCompte, setSupprimerCompte] = useState(false);
+  const [nomConfirmationSuppression, setNomConfirmationSuppression] = useState("");
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
   // Fonction pour ajouter de l'argent au compte
   const ajouterArgent = async (montant) => {
@@ -198,6 +202,38 @@ export default function Compte({ setSoldeGlobal }) {
       setMotDePasseActuel("");
       setNouveauMotDePasse("");
       setAfficherModificationMotDePasse(false);
+    }
+  };
+
+  const validerSuppressionCompte = async (event) => {
+    event.preventDefault();
+    if (!token) {
+      setMessage("Vous devez être connecté pour effectuer cette action.");
+      return;
+    }
+
+    setSuppressionEnCours(true);
+    setMessage("");
+    try {
+      const response = await fetch(`${API_URL}/deleteCompte`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ nom: nomConfirmationSuppression }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Impossible de supprimer le compte.");
+
+      localStorage.removeItem("token");
+      setIsLoggedIn(false);
+      setSoldeGlobal(null);
+      navigate("/login", { replace: true });
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSuppressionEnCours(false);
     }
   };
 
@@ -421,29 +457,37 @@ export default function Compte({ setSoldeGlobal }) {
         )}
         {supprimerCompte ? (
           <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #d4af37" }}>
-            <form onSubmit={validerMotDePasse}>
+            <form onSubmit={validerSuppressionCompte}>
               <h2 className="title is-4">Supprimer votre compte</h2>
               <div className="field">
-                <label className="label" htmlFor="mot-de-passe-actuel">Entrer votre nom d'utilisateur pour confirmer</label>
+                <label className="label" htmlFor="nom-confirmation-suppression">Entrez votre nom d'utilisateur pour confirmer</label>
                 <div className="control">
                   <input
+                    id="nom-confirmation-suppression"
                     className="input"
                     type="text"
+                    value={nomConfirmationSuppression}
+                    onChange={(event) => setNomConfirmationSuppression(event.target.value)}
                     autoFocus
                     required
+                    disabled={suppressionEnCours}
                   />
                 </div>
+                {message && <p className="help is-danger" style={{ marginTop: "0.5rem" }}>{message}</p>}
               </div>
               <div className="buttons is-centered mb-0">
-                <button className="button is-danger" type="submit">
-                  Supprimer
+                <button className="button is-danger" type="submit" disabled={suppressionEnCours}>
+                  {suppressionEnCours ? "Suppression..." : "Supprimer"}
                 </button>
                 <button
                   className="button"
                   type="button"
                   onClick={() => {
-                    setSupprimerCompte(false)
+                    setSupprimerCompte(false);
+                    setNomConfirmationSuppression("");
+                    setMessage("");
                   }}
+                  disabled={suppressionEnCours}
                 >
                   Annuler
                 </button>
