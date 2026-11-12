@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Salon = require("../models/salon");
 const { lireToken } = require("../fonctionsCommunes");
 const { roleDansSalon, vuePourRole } = require("../jeux/vueTable");
+const { attribuerMains } = require("../jeux/mainsDetectees");
 
 let io = null; // gardé pour notifierSalonFerme (appelé depuis la route DELETE /deleteSalon)
 const departs = new Map(); // "salonId:compteId" -> minuterie d'un joueur déconnecté sans prévenir
@@ -22,7 +23,9 @@ async function diffuserTable(salonId, salon) {
 async function retirerJoueur(salonId, compteId) {
 	const salon = await Salon.findById(salonId);
 	if (!salon) return;
-	const restants = salon.players.filter((player) => String(player.id_compte) !== String(compteId));
+	const restants = salon.players.filter(
+		(player) => String(player.id_compte) !== String(compteId),
+	);
 	if (restants.length === salon.players.length) return; // déjà parti
 	salon.players = restants;
 	salon.updated_at = new Date();
@@ -61,13 +64,39 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 	});
 
 	io.on("connection", (socket) => {
-
 		// Service Python de détection. La clé doit exister : sinon undefined === undefined laisserait passer tout le monde
 		const cle = process.env.CLE_DETECTION;
 		if (cle && socket.handshake.auth?.cle === cle) {
 			socket.join("detection");
-			socket.on("cartes", ({ salonId, mains }) => {
-				io.to(String(salonId)).emit("cartes", mains);
+			// mains = { croupier: main ou null, joueurs: [main, ...] } (voir separer_zones dans service.py)
+			socket.on("cartes", async ({ salonId, mains } = {}) => {
+				try {
+					if (!mongoose.isValidObjectId(salonId))
+						return console.error(
+							`Salon invalide pour cartes (service de détection) : ${salonId}`,
+						);
+
+					// typeof null === "object" : ce test accepte aussi croupier = null (aucune carte en haut)
+					if (typeof mains?.croupier !== "object" || !Array.isArray(mains?.joueurs))
+						return console.error(
+							`Mains mal formées pour cartes (service de détection) : ${JSON.stringify(mains)}`,
+						);
+
+					const salon = await Salon.findById(salonId);
+					if (!salon)
+						return console.error(
+							`Salon introuvable pour cartes (service de détection) : ${salonId}`,
+						);
+
+					// Les cartes de la caméra deviennent l'état du salon, puis chaque navigateur reçoit game:update
+					attribuerMains(salon, mains);
+					salon.updated_at = new Date();
+					await salon.save();
+					await diffuserTable(String(salon._id), salon.toObject());
+				} catch (err) {
+					console.error(err);
+					console.error("Erreur du serveur : cartes (service de détection).");
+				}
 			});
 			return; // pas besoin des handlers des navigateurs
 		}
@@ -98,7 +127,7 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 				repondre({ salon: vuePourRole(salon.toObject(), role), role });
 			} catch (err) {
 				console.error(err);
-				repondre({ error: "Erreur du serveur." });
+				repondre({ error: "Erreur du serveur : join." });
 			}
 		});
 
@@ -125,7 +154,7 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 				repondre({ ok: true });
 			} catch (err) {
 				console.error(err);
-				repondre({ error: "Erreur du serveur." });
+				repondre({ error: "Erreur du serveur : leave." });
 			}
 		});
 
@@ -133,17 +162,21 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 		socket.on("salon:close", async (ack) => {
 			const repondre = typeof ack === "function" ? ack : () => {};
 			const { salonId, role } = socket.data;
-			if (!salonId || role !== "dealer") return repondre({ error: "Seul le dealer de ce salon peut le fermer." });
+			if (!salonId || role !== "dealer")
+				return repondre({ error: "Seul le dealer de ce salon peut le fermer." });
 			try {
 				const salon = await Salon.findById(salonId);
 				if (!salon) return repondre({ error: "Salon introuvable." });
-				if (salon.status === "playing") return repondre({ error: "Le salon ne peut pas être fermé pendant une partie." });
+				if (salon.status === "playing")
+					return repondre({
+						error: "Le salon ne peut pas être fermé pendant une partie.",
+					});
 				await Salon.findByIdAndDelete(salonId);
 				notifierSalonFerme(salonId);
 				repondre({ ok: true });
 			} catch (err) {
 				console.error(err);
-				repondre({ error: "Erreur du serveur." });
+				repondre({ error: "Erreur du serveur : salon:close." });
 			}
 		});
 
@@ -161,12 +194,16 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 			const { salonId, role, user } = socket.data;
 			if (!salonId || role !== "joueur") return;
 			const connexions = await io.in(salonId).fetchSockets();
-			if (connexions.some((connexion) => String(connexion.data.user?.id) === String(user.id))) return; // un autre onglet est encore là
+			if (connexions.some((connexion) => String(connexion.data.user?.id) === String(user.id)))
+				return; // un autre onglet est encore là
 			annulerDepart(salonId, user.id);
-			departs.set(`${salonId}:${user.id}`, setTimeout(() => {
-				departs.delete(`${salonId}:${user.id}`);
-				retirerJoueur(salonId, user.id).catch((err) => console.error(err));
-			}, delaiRetourMs));
+			departs.set(
+				`${salonId}:${user.id}`,
+				setTimeout(() => {
+					departs.delete(`${salonId}:${user.id}`);
+					retirerJoueur(salonId, user.id).catch((err) => console.error(err));
+				}, delaiRetourMs),
+			);
 		});
 	});
 

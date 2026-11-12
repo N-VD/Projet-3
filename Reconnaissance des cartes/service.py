@@ -16,7 +16,6 @@ Envoie : cartes {salonId, mains: {croupier, joueurs}}
              (droite de l'image) vers sa droite
 """
 
-import json
 import os
 import threading
 import time
@@ -56,6 +55,15 @@ def separer_zones(groupes, hauteur):
     }
 
 
+def signature_cartes(mains):
+    """Entree : mains {croupier, joueurs}; sortie : seulement les cartes, ex. (("J",), (("7",),)).
+    On compare ceci pour savoir si la table a change : `position` (pixels) bouge
+    un peu a chaque image meme si les cartes ne bougent pas."""
+    croupier = tuple(mains["croupier"]["cartes"]) if mains["croupier"] else ()
+    joueurs = tuple(tuple(m["cartes"]) for m in mains["joueurs"])
+    return croupier, joueurs
+
+
 class Service:
     """Garde seulement la derniere image de chaque salon : si l'analyse est
     plus lente que la camera, les images en trop sont sautees au lieu de
@@ -67,7 +75,7 @@ class Service:
         self.sio = socketio.Client()
         self.dernieres = {}      # salonId -> JPEG (bytes) pas encore analyse
         self.suivis = {}         # salonId -> SuiviCartes (historique des cartes)
-        self.envoyes = {}        # salonId -> dernier resultat envoye (JSON), pour ne pas renvoyer le meme
+        self.envoyes = {}        # salonId -> cartes du dernier envoi (signature_cartes), pour ne pas renvoyer les memes
         self.vus = {}            # salonId -> heure de la derniere image
         self.verrou = threading.Lock()
         self.nouvelle = threading.Event()
@@ -92,13 +100,11 @@ class Service:
         _, groupes, _ = traiter_image(frame, suivi, self.templates)
         mains = separer_zones(groupes, frame.shape[0])
 
-        cv2.imwrite(f"/tmp/derniere_{salon_id}.jpg", frame)  # DEBUG temporaire
-
-        texte = json.dumps(mains, sort_keys=True)
-        if texte != self.envoyes.get(salon_id) and self.sio.connected:
+        signature = signature_cartes(mains)
+        if signature != self.envoyes.get(salon_id) and self.sio.connected:
             message = {"salonId": salon_id, "mains": mains}
             self.sio.emit("cartes", message)
-            self.envoyes[salon_id] = texte
+            self.envoyes[salon_id] = signature
             resume = [{"croupier": mains["croupier"]["cartes"]}] if mains["croupier"] else []
             resume += [{f"main{m['id']}": m["cartes"]} for m in mains["joueurs"]]
             print(f"[{salon_id}] {sum(len(g) for g in groupes)} carte(s) detectee(s), cartes = {resume}", flush=True)
