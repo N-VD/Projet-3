@@ -4,6 +4,7 @@ const Salon = require("../models/salon");
 const { lireToken } = require("../fonctionsCommunes");
 const { roleDansSalon, vuePourRole } = require("../jeux/vueTable");
 const { attribuerMains } = require("../jeux/mainsDetectees");
+const { initialiserChat } = require("./chat");
 
 let io = null; // gardé pour notifierSalonFerme (appelé depuis la route DELETE /deleteSalon)
 const departs = new Map(); // "salonId:compteId" -> minuterie d'un joueur déconnecté sans prévenir
@@ -101,6 +102,8 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 			return; // pas besoin des handlers des navigateurs
 		}
 
+		initialiserChat(io, socket);
+
 		// Navigateur : connecté (token valide) ou invité (pas de token → user = null)
 		socket.data.user = lireToken(socket.handshake.auth?.token);
 
@@ -113,10 +116,8 @@ function initialiserSocketServer(httpServer, { delaiRetourMs = 30_000 } = {}) {
 				const salon = await Salon.findById(salonId);
 				if (!salon) return repondre({ error: "Salon introuvable." });
 
-				// Une connexion suit un seul salon (socket.id est sa room personnelle : on la garde)
-				for (const room of socket.rooms) {
-					if (room !== socket.id) socket.leave(room);
-				}
+				// Une connexion suit un seul salon : on quitte seulement l'ancien (les rooms "chat:..." ne sont pas touchées)
+				if (socket.data.salonId) socket.leave(socket.data.salonId);
 				const room = String(salon._id);
 				const role = roleDansSalon(salon, socket.data.user);
 				socket.join(room);

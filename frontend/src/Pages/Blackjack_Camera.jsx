@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { connecterSocket } from "../services/socket.js";
 import "./Blackjack.css";
+import Chat from "./Chat.jsx";
 import { lireUtilisateur } from "./reglesBlackjack/outils.js";
 
 const FPS_ENVOI = 10;
@@ -203,29 +204,37 @@ function BlackjackCamera() {
 					</div></div>}
 				</div>
 
-				<div className="bj-table">
-					<div className="level is-mobile">
-						<div className="level-left" />
-						<div className="level-right">
-							{role === "spectateur" && <span className="tag is-info mr-2"><span className="icon"><i className="fas fa-eye" /></span><span>Spectateur</span></span>}
-							<span className="tag is-dark">Salon {salonId}</span>
+				<div className="columns">
+					<div className="column">
+						<div className="bj-table">
+							<div className="level is-mobile">
+								<div className="level-left" />
+								<div className="level-right">
+									{role === "spectateur" && <span className="tag is-info mr-2"><span className="icon"><i className="fas fa-eye" /></span><span>Spectateur</span></span>}
+									<span className="tag is-dark">Salon {salonId}</span>
+								</div>
+							</div>
+							<h1 className="title has-text-centered">Blackjack</h1>
+							<p className="subtitle is-6 has-text-centered">{filme ? "Vous filmez cette table" : "Table réelle en direct"}</p>
+
+							<div className="bj-zone">
+								<div className="bj-camera">
+									{filme
+										? <video ref={videoRef} muted playsInline aria-label="Aperçu de votre caméra" />
+										: image
+											? <img src={image} alt="Caméra de la table" />
+											: <p className="bj-camera-attente">En attente de la caméra du dealer...</p>}
+								</div>
+								{filme && statutCamera && <span className={`tag is-medium ${couleurStatut[statutCamera.type]}`} role="status">{statutCamera.texte}</span>}
+								{!filme && image && <span className={`tag is-medium ${enDirect ? "is-success" : "is-danger"}`} role="status">
+									<span className="icon"><i className="fas fa-circle" /></span><span>{enDirect ? "En direct" : "Caméra coupée"}</span>
+								</span>}
+							</div>
 						</div>
 					</div>
-					<h1 className="title has-text-centered">Blackjack</h1>
-					<p className="subtitle is-6 has-text-centered">{filme ? "Vous filmez cette table" : "Table réelle en direct"}</p>
-
-					<div className="bj-zone">
-						<div className="bj-camera">
-							{filme
-								? <video ref={videoRef} muted playsInline aria-label="Aperçu de votre caméra" />
-								: image
-									? <img src={image} alt="Caméra de la table" />
-									: <p className="bj-camera-attente">En attente de la caméra du dealer...</p>}
-						</div>
-						{filme && statutCamera && <span className={`tag is-medium ${couleurStatut[statutCamera.type]}`} role="status">{statutCamera.texte}</span>}
-						{!filme && image && <span className={`tag is-medium ${enDirect ? "is-success" : "is-danger"}`} role="status">
-							<span className="icon"><i className="fas fa-circle" /></span><span>{enDirect ? "En direct" : "Caméra coupée"}</span>
-						</span>}
+					{/* Chat de la table : même socket que la page (connecterSocket retourne toujours la même connexion) */}
+					<div className="column is-narrow">
+						<Chat salonId={salonId} />
 					</div>
 				</div>
 
