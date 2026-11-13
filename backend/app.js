@@ -3,27 +3,8 @@ const path = require('path');
 const http = require('http'); // 1. IMPORTANT : Ne pas oublier d'importer http
 const { initialiserSocketServer } = require('./sockets/socketServer');
 
-// 1. Détection et création du fichier .env à la racine
-const envPath = path.join(__dirname, '..', '.env');
 
-try {
-    if (!fs.existsSync(envPath)) {
-        const defaultEnvContent = `DB_USER=admin
-DB_PASSWORD=bellevibe_casino
-DB_NAME=myapp
-PORT=3000
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-`;
-        fs.writeFileSync(envPath, defaultEnvContent, 'utf8');
-        console.log(" Fichier .env absent : créé automatiquement à la racine du projet !");
-    }
-} catch (err) {
-    // Évite de faire planter Node si Docker restreint l'écriture hors de /app
-    console.log("ℹ Impossibilité d'écrire le .env sur le disque hôte (géré en mémoire par Docker).");
-}
-
-require('dotenv').config({ path: envPath });
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const app = express();
 const server = http.createServer(app); // 2. Création du serveur HTTP partagé

@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { connecterSocket, deconnecterSocket } from "../services/socket.js";
+import { notifierSoldeMisAJour } from "../services/solde.js";
 import "./Blackjack.css";
 import {
 	API_URL,
@@ -17,7 +18,7 @@ function memeIdentifiant(premier, second) {
 	return premier != null && second != null && String(premier) === String(second);
 }
 
-function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
+function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSalons }) {
 	const utilisateur = lireUtilisateur();
 	const idUtilisateur = utilisateur.id ?? utilisateur._id;
 	const [mise, setMise] = useState(10);
@@ -31,6 +32,8 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 	const minuterieAnimation = useRef(null);
 	const [planAnimation, setPlanAnimation] = useState(null);
 	const [enAnimation, setEnAnimation] = useState(false);
+	const [banExpiresAt, setBanExpiresAt] = useState(null);
+	const [tempsRestant, setTempsRestant] = useState("");
 
 	useEffect(() => () => window.clearTimeout(minuterieAnimation.current), []);
 
@@ -63,65 +66,21 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		};
 	}, [salonId, setSalon]);
 
-	const salonRef = useRef(salon);
 	useEffect(() => {
-		salonRef.current = salon;
-	}, [salon]);
-
-	function distribuer() {
-		if (!salon) return;
-		if (!salon.players.some((player) => player.bet > 0)) {
-			setMessage("Un joueur doit placer une mise avant le début de la manche.");
-			return;
-		}
-		const cartes = melangerSabot();
-		const players = salon.players.map((player) => {
-			if (player.bet <= 0) return { ...player, hand: [], hands: [], resultats: [], activeHand: 0, status: "waiting", isTurn: false };
-			const hand = [cartes.pop(), cartes.pop()];
-			const naturel = totalMain(hand) === 21;
-			return {
-				...player,
-				hand,
-				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
-				resultats: [],
-				activeHand: 0,
-				status: naturel ? "blackjack" : "playing",
-				isTurn: false,
-			};
-		});
-		const dealerHand = [cartes.pop(), cartes.pop()];
-		const premier = players.find((player) => player.status === "playing");
-		const prochain = premier?.seat_index ?? SIEGE_INACTIF;
-		const etat = {
-			...salon,
-			status: "playing",
-			dealer_hand: dealerHand,
-			players: players.map((player) => ({ ...player, isTurn: player.seat_index === prochain })),
-			currentTurnSeat: prochain,
-		};
-		setSabot(cartes);
-		setResultats({});
-		if (!premier) terminer(etat, cartes, {});
-		else sauvegarder(etat, cartes, {});
-	}
-
-	useEffect(() => {
-		lancementAutomatique.current = () => {
-			const salonActuel = salonRef.current;
-			if (!salonActuel) return;
-			distribuer();
-		};
-	}, []);
-
-	useEffect(() => {
+		let annule = false;
 		if (!localStorage.getItem("token")) {
-			setSolde(0);
-			return;
+			Promise.resolve().then(() => {
+				if (!annule) setSolde(0);
+			});
+			return () => {
+				annule = true;
+			};
 		}
 		const token = localStorage.getItem("token");
 		fetch(`${API_URL}/solde`, { headers: { Authorization: `Bearer ${token}` } })
 			.then(async (response) => {
 				const data = await response.json();
+				if (annule) return;
 				if (response.status === 401) {
 					localStorage.removeItem("token");
 					setIsLoggedIn(false);
@@ -130,6 +89,9 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 				if (response.ok) setSolde(data.solde);
 			})
 			.catch(() => { });
+		return () => {
+			annule = true;
+		};
 	}, [setIsLoggedIn]);
 
 	async function appeler(chemin, options = {}) {
@@ -151,6 +113,16 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 				setIsLoggedIn(false);
 				return null;
 			}
+			//banissement temporaire
+			if (response.status === 403) {
+				console.log("CONTENU REÇU 403 :", data);
+                if (data.ban_expires_at) {
+                    setBanExpiresAt(data.ban_expires_at);
+                } 
+                    setMessage(data.message || "Vous avez atteint votre limite de perte fixée. Votre compte a été suspendu par mesure de jeu responsable.");
+   					return null;
+              
+            }
 			if (!response.ok) {
 				setMessage(data.message || "Erreur du serveur.");
 				return null;
@@ -163,6 +135,29 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 			setChargement(false);
 		}
 	}
+	useEffect(() => {
+    if (!banExpiresAt) return;
+
+    const mettreAJourTemps = () => {
+        const maintenant = new Date();
+        const expiration = new Date(banExpiresAt);
+        const diffMs = expiration - maintenant;
+
+        if (diffMs <= 0) {
+            setTempsRestant("Le bannissement est terminé. Vous pouvez rejouer !");
+            setBanExpiresAt(null);
+        } else {
+            const minutes = Math.floor(diffMs / (1000 * 60));
+            const secondes = Math.floor((diffMs % (1000 * 60)) / 1000);
+            setTempsRestant(`Compte suspendu (Jeu responsable). Temps restant : ${minutes}m ${secondes}s`);
+        }
+    };
+
+    mettreAJourTemps(); // Exécution immédiate pour éviter le délai d'une seconde
+    const interval = setInterval(mettreAJourTemps, 1000);
+
+    return () => clearInterval(interval);
+}, [banExpiresAt]);
 
 	function payloadSalon(etat) {
 		return {
@@ -192,7 +187,11 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		const salonMisAJour = { ...salon, ...data.gameStatus, salonId: salon.salonId };
 		const nouveauPlan = planifierAnimations(salon, salonMisAJour);
 		setSalon(salonMisAJour);
-		if (data.solde !== undefined && data.solde !== null) setSolde(data.solde);
+		if (data.solde !== undefined && data.solde !== null) {
+			setSolde(data.solde);
+			setSoldeGlobal(data.solde);
+			notifierSoldeMisAJour(data.solde);
+		}
 		setSabot(nextDeck);
 		setResultats(prochainsResultats);
 		const socket = connecterSocket();
@@ -261,6 +260,47 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		};
 		await sauvegarder(partieTerminee, cartesRestantes, prochainsResultats);
 	}
+
+	function distribuer() {
+		if (!salon) return;
+		if (!salon.players.some((player) => player.bet > 0)) {
+			setMessage("Un joueur doit placer une mise avant le début de la manche.");
+			return;
+		}
+		const cartes = melangerSabot();
+		const players = salon.players.map((player) => {
+			if (player.bet <= 0) return { ...player, hand: [], hands: [], resultats: [], activeHand: 0, status: "waiting", isTurn: false };
+			const hand = [cartes.pop(), cartes.pop()];
+			const naturel = totalMain(hand) === 21;
+			return {
+				...player,
+				hand,
+				hands: [{ cartes: hand, mise: player.bet, status: naturel ? "blackjack" : "playing", naturel }],
+				resultats: [],
+				activeHand: 0,
+				status: naturel ? "blackjack" : "playing",
+				isTurn: false,
+			};
+		});
+		const dealerHand = [cartes.pop(), cartes.pop()];
+		const premier = players.find((player) => player.status === "playing");
+		const prochain = premier?.seat_index ?? SIEGE_INACTIF;
+		const etat = {
+			...salon,
+			status: "playing",
+			dealer_hand: dealerHand,
+			players: players.map((player) => ({ ...player, isTurn: player.seat_index === prochain })),
+			currentTurnSeat: prochain,
+		};
+		setSabot(cartes);
+		setResultats({});
+		if (!premier) terminer(etat, cartes, {});
+		else sauvegarder(etat, cartes, {});
+	}
+
+	useEffect(() => {
+		lancementAutomatique.current = distribuer;
+	});
 
 	async function nouvelleManche() {
 		if (!salon || salon.status !== "finished") return;
@@ -386,8 +426,6 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 		setSalon(null);
 	}
 
-	lancementAutomatique.current = distribuer;
-
 	useEffect(() => {
 		const joueursEnAttente = salon?.status === "waiting" && salon.players.some((player) => player.bet > 0);
 		if (!joueursEnAttente || !peutJouer) return undefined; // un spectateur ne lance jamais la manche
@@ -425,7 +463,7 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 	const formatArgent = (montant) => `${Number(montant).toFixed(2)} $`;
 
 	return (
-		<section className="section">
+		<section className="section" style={{ backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('/background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", minHeight: "100vh" }}>
 			<div className="container">
 				<div className="bj-table">
 					<div className="level is-mobile">
@@ -555,6 +593,11 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, retourAuxSalons }) {
 				</div>
 
 				{message && <p className="notification is-danger is-light mt-4 mb-0" role="alert">{message}</p>}
+				{tempsRestant && (
+                    <div className="notification is-danger is-light has-text-centered mt-4" role="alert">
+                        <p className="has-text-weight-bold">{tempsRestant}</p>
+                    </div>
+                )}
 			</div>
 		</section>
 	);

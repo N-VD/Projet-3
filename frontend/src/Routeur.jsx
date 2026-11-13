@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
@@ -9,6 +9,7 @@ import Salon from "./Pages/Salon.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
 import BlackjackCamera from "./Pages/Blackjack_Camera.jsx";
 import GithubCallback from "./Pages/GithubCallback.jsx";
+import { API_URL } from "./Pages/reglesBlackjack/constantes.js";
 
 function isTokenExpired(token) {
 	const payload = JSON.parse(atob(token.split(".")[1]));
@@ -27,18 +28,50 @@ function Routeur() {
 	});
 	// Invité : pas de compte, mais il peut ouvrir une table (le socket lui donne le rôle spectateur)
 	const [isGuest, setIsGuest] = useState(() => sessionStorage.getItem("guest") === "true");
-	const fond = <Salon setIsLoggedIn={setIsLoggedIn} />;
+	const [solde, setSolde] = useState(null);
+
+	useEffect(() => {
+		let annule = false;
+		const token = localStorage.getItem("token");
+
+		if (!isLoggedIn || !token) {
+			Promise.resolve().then(() => {
+				if (!annule) setSolde(null);
+			});
+			return () => {
+				annule = true;
+			};
+		}
+
+		fetch(`${API_URL}/solde`, {
+			headers: { Authorization: `Bearer ${token}` },
+		})
+			.then(async (response) => {
+				if (!response.ok) throw new Error("Solde indisponible");
+				const data = await response.json();
+				if (!annule) setSolde(data.solde ?? 0);
+			})
+			.catch(() => {
+				if (!annule) setSolde(null);
+			});
+
+		return () => {
+			annule = true;
+		};
+	}, [isLoggedIn]);
+
+	const fond = <Salon isLoggedIn={false} setIsLoggedIn={setIsLoggedIn} setSoldeGlobal={setSolde} />;
 
 	return (
 		<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+			<Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} soldeGlobal={solde} />
 			<AuthPopup isLoggedIn={isLoggedIn} isGuest={isGuest} setIsGuest={setIsGuest} />
 			<Routes>
 				<Route
 					path="/"
 					element={
 						isLoggedIn || isGuest
-							? <Salon setIsLoggedIn={setIsLoggedIn} />
+							? <Salon setIsLoggedIn={setIsLoggedIn} setSoldeGlobal={setSolde} />
 							: <Navigate to="/login" replace />
 					}
 				/>
@@ -74,7 +107,7 @@ function Routeur() {
 				/>
 				<Route
 					path="/compte"
-					element={isLoggedIn ? <Compte /> : <Navigate to="/login" replace />}
+					element={isLoggedIn ? <Compte setSoldeGlobal={setSolde} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
 				/>
 				<Route
 					path="/jeux/blackjack"

@@ -4,8 +4,9 @@ const { authentifier, authentifierOptionnel } = require('../fonctionsCommunes');
 const Salon = require('../models/salon');
 const Compte = require('../models/compte');
 const Transaction = require('../models/transaction');
-const { retourJoueur } = require('../jeux/reglementSalon');
 const { notifierSalonFerme } = require('../sockets/socketServer');
+const { retourJoueur } = require('../jeux/reglementSalon');
+//const { verifierTimeoutEtLimite } = require('./Fontion/timeOut');
 const router = express.Router();
 
 
@@ -141,6 +142,8 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
     const hasPlayers = players !== undefined;
     const hasCurrentTurnSeat = currentTurnSeat !== undefined;
 
+
+
     // Juste une de des variables plus haut a besoin d'être changer
     if (!salonId ||!mongoose.isValidObjectId(salonId) || (!hasStatus && !hasDealerHand && !hasPlayers && !hasCurrentTurnSeat)
         || (hasStatus && !['waiting', 'playing', 'finished'].includes(status))
@@ -236,6 +239,22 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
                 for (const player of salon.players) {
                     const mise = Math.round(Number(player.bet) * 100) / 100;
                     if (!Number.isFinite(mise) || mise <= 0) continue;
+                    
+                    //ajout de la vérification de la limite de perte avant d'appliquer le mouvement
+                    const compteJoueur = await Compte.findById(player.id_compte);
+                    if (compteJoueur && compteJoueur.limit_perte !== null) {
+            
+                        if (compteJoueur.montant < compteJoueur.limit_perte) {
+                            compteJoueur.ban_status = true;
+                            // Optionnel : définir une expiration (ex: 5h ou permanent)
+                            compteJoueur.ban_expires_at = new Date(Date.now() + 60 * 1000);
+                            await compteJoueur.save();
+                            
+                            const erreur = new Error("Vous avez atteint votre limite de perte fixée. Votre compte a été suspendu par mesure de jeu responsable.");
+                            erreur.code = 'USER_BANNED';
+                            throw erreur;
+                        }
+                    }
                     await appliquerMouvement(player.id_compte, mise, 'Mise blackjack en salon', true);
                 }
             }
@@ -295,6 +314,10 @@ router.patch('/gameStatus', authentifier, async (req, res) => {
             }
             if (error.code === 'INSUFFICIENT_FUNDS' || error.code === 'ACCOUNT_NOT_FOUND') {
                 return res.status(400).json({ message: error.message });
+            }
+            if (error.code === 'USER_BANNED') {
+                const compteBanni = await Compte.findById(req.user.id);
+                return res.status(403).json({ message: error.message, ban_expires_at: compteBanni?.ban_expires_at });
             }
             throw error;
         }

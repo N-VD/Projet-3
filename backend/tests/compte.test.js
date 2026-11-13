@@ -52,3 +52,12 @@ test('GET /me : retourne 401 si le token est invalide', async () => {
     assert.equal(res.status, 401);
     assert.equal(res.body.message, "Token invalide ou expiré");
 });
+
+test('DELETE /deleteCompte : retourne 401 si aucun token n\'est fourni', async () => {
+    const res = await request(app)
+        .delete('/deleteCompte')
+        .send({ nom: 'Jean' });
+
+    assert.equal(res.status, 401);
+    assert.equal(res.body.message, "Accès refusé. Token manquant.");
+});

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import {
 	API_URL,
 	idSalon,
@@ -67,7 +68,7 @@ function Salon({ setIsLoggedIn }) {
 		} finally {
 			setChargement(false);
 		}
-	}
+	};
 
 	// Le lobby est en HTTP seulement : la connexion Socket.IO (et le "join") appartient à la table
 	// Premier chargement : les états sont modifiés dans le .then, pas directement dans l'effet (règle du lint)
@@ -133,7 +134,16 @@ function Salon({ setIsLoggedIn }) {
 	}
 
 	return (
-		<section className="section">
+		<section
+			className="section"
+			style={{
+				backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('/background.jpg')",
+				backgroundSize: "cover",
+				backgroundPosition: "center",
+				backgroundRepeat: "no-repeat",
+				minHeight: "100vh",
+			}}
+		>
 			<div className="container">
 				<div className="level is-mobile" style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2.2rem" }}>
 					<h1 className="title is-2 mb-0">Salons de blackjack</h1>

@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 const {authentifier , validerChamps, validerMotDePasse, validerAge, jwt, jwt_mdp} = require('../fonctionsCommunes');
 const {genererToken} = require('../fonctionsCommunes');
 const Compte = require('../models/compte');//ajout 
-const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -80,27 +79,51 @@ router.post('/login', async (req, res) => {
 });
 
 router.delete('/deleteCompte', authentifier, async (req, res) => {
-    const { id } = req.body;
-    
-    // Vérifier si l'utilisateur est un administrateur
-    if (req.user?.role?.toLowerCase() !== 'admin') {//ajout ??
-        return res.status(403).json({ message: "Accès refusé. Vous n'êtes pas autorisé à supprimer des comptes." });
+    const nomConfirmation = req.body?.nom;
+    if (typeof nomConfirmation !== 'string' || !nomConfirmation) {
+        return res.status(400).json({ message: "Veuillez confirmer votre nom d'utilisateur." });
     }
-    //validation contre les injection noSQL
-    if(!id||!mongoose.isValidObjectID(id)){
-        return res.status(400).json({message:"Idendifiant de compte invalide"});
-    }
-    
-    // Vérifier si le compte existe
-    const compte = await Compte.findById(id);
+
+    const compte = await Compte.findById(req.user.id);
     if (!compte) {
         return res.status(404).json({ message: "Compte non trouvé" });
     }
+    if (nomConfirmation !== compte.nom) {
+        return res.status(400).json({ message: "Le nom d'utilisateur ne correspond pas." });
+    }
 
-    // Supprimer le compte
-    await Compte.findByIdAndDelete(id);
+    await Compte.findByIdAndDelete(req.user.id);
     res.json({ message: "Compte supprimé" });
+});
 
+// Lier a la fonctionnalité de banissement du compte, pour le moment pas utilisé
+router.patch('/limite-perte', authentifier, async (req, res) => {
+    try {
+        const idCompte = req.user.id; // On récupère l'ID du token de l'utilisateur connecté
+        const { limit_perte } = req.body;
+
+        // Validation basique (permet d'accepter un nombre positif ou null pour désactiver)
+        if (limit_perte !== null && (typeof limit_perte !== 'number' || limit_perte < 0)) {
+            return res.status(400).json({ error: "Veuillez entrer un montant limite valide." });
+        }
+
+        const compteMaj = await Compte.findByIdAndUpdate(
+            idCompte,
+            { $set: { limit_perte: limit_perte } },
+            { new: true, runValidators: true }
+        );
+
+        if (!compteMaj) {
+            return res.status(404).json({ error: "Compte non trouvé." });
+        }
+
+        res.status(200).json({ 
+            message: "Limite de perte mise à jour avec succès.", 
+            limit_perte: compteMaj.limit_perte 
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Erreur serveur lors de la mise à jour de la limite." });
+    }
 });
 
 // Récupérer les informations du compte connecté
