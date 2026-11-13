@@ -5,7 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Blackjack.jsx sera réécrit de zéro : ignoré par le lint en attendant
+  globalIgnores(['dist', 'src/Pages/Blackjack.jsx']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

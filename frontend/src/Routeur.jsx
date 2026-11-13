@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import App from "./Pages/App.jsx";
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
 import Compte from "./Pages/Compte.jsx";
@@ -8,7 +7,7 @@ import Navbar from "./Pages/Navbar.jsx";
 import AuthPopup from "./Pages/AuthPopup.jsx";
 import Salon from "./Pages/Salon.jsx";
 import Blackjack from "./Pages/Blackjack.jsx";
-import SpectateurTable from "./Pages/SpectateurTable.jsx";
+import BlackjackCamera from "./Pages/Blackjack_Camera.jsx";
 import GithubCallback from "./Pages/GithubCallback.jsx";
 import { API_URL } from "./Pages/reglesBlackjack/constantes.js";
 
@@ -27,7 +26,7 @@ function Routeur() {
 		}
 		return true;
 	});
-	const [isSpectateur, setIsSpectateur] = useState(false);
+	// Invité : pas de compte, mais il peut ouvrir une table (le socket lui donne le rôle spectateur)
 	const [isGuest, setIsGuest] = useState(() => sessionStorage.getItem("guest") === "true");
 	const [solde, setSolde] = useState(null);
 
@@ -71,11 +70,9 @@ function Routeur() {
 				<Route
 					path="/"
 					element={
-						isLoggedIn
-							? <Salon setIsLoggedIn={setIsLoggedIn} setSoldeGlobal={setSolde} setIsSpectateur={setIsSpectateur} isSpectateur={false} />
-							: isGuest || isSpectateur
-								? <Navigate to="/spectateur" replace />
-								: <Navigate to="/login" replace />
+						isLoggedIn || isGuest
+							? <Salon setIsLoggedIn={setIsLoggedIn} setSoldeGlobal={setSolde} />
+							: <Navigate to="/login" replace />
 					}
 				/>
 				<Route
@@ -86,7 +83,7 @@ function Routeur() {
 						) : (
 							<>
 								{fond}
-								<Login setIsLoggedIn={setIsLoggedIn} setIsSpectateur={setIsSpectateur} />
+								<Login setIsLoggedIn={setIsLoggedIn} setIsGuest={setIsGuest} />
 							</>
 						)
 					}
@@ -105,14 +102,6 @@ function Routeur() {
 					}
 				/>
 				<Route
-					path="/spectateur"
-					element={
-						isGuest || isSpectateur || (!isLoggedIn && sessionStorage.getItem("guest") === "true")
-							? <Salon setIsLoggedIn={setIsLoggedIn} setSoldeGlobal={setSolde} setIsSpectateur={setIsSpectateur} isSpectateur={true} />
-							: <Navigate to="/login" replace />
-					}
-				/>
-				<Route
 					path="/auth/github/callback"
 					element={isLoggedIn ? <Navigate to="/" replace /> : <GithubCallback setIsLoggedIn={setIsLoggedIn} />}
 				/>
@@ -121,12 +110,16 @@ function Routeur() {
 					element={isLoggedIn ? <Compte setSoldeGlobal={setSolde} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
 				/>
 				<Route
-					path="/dashboard"
-					element={<Navigate to="/" replace />}
+					path="/jeux/blackjack"
+					element={isLoggedIn ? <Blackjack isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} /> : <Navigate to="/login" replace />}
 				/>
 				<Route
-					path="/spectateur/:id"
-					element={<SpectateurTable />}
+					path="/jeux/blackjack-camera/:id"
+					element={isLoggedIn || isGuest ? <BlackjackCamera /> : <Navigate to="/login" replace />}
+				/>
+				<Route
+					path="/dashboard"
+					element={<Navigate to="/" replace />}
 				/>
 			</Routes>
 		</BrowserRouter>

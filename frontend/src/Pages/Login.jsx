@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { connecterAvecGithub } from "../services/oauthGithub.js";
 
-function Login({ setIsLoggedIn, setIsSpectateur }) {
+function Login({ setIsLoggedIn, setIsGuest }) {
   const [identifiant, setIdentifiant] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,10 +37,11 @@ function Login({ setIsLoggedIn, setIsSpectateur }) {
     }
   }
 
+  // Sans compte : même lobby et mêmes tables, le socket donne le rôle spectateur
   function passerAuModeSpectateur() {
     sessionStorage.setItem("guest", "true");
-    setIsSpectateur(true);
-    navigate("/spectateur");
+    setIsGuest?.(true);
+    navigate("/");
   }
 
   return (
@@ -99,7 +100,7 @@ function Login({ setIsLoggedIn, setIsSpectateur }) {
           </button>
           <p className="has-text-centered has-text-grey my-3">ou</p>
           <button className="button is-dark is-fullwidth mt-3" type="button" onClick={passerAuModeSpectateur}>
-            <span>Continuer en tant que spectateur</span>
+            <span>Continuer en tant qu'invité</span>
           </button>
         </div>
       </div>

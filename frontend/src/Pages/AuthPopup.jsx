@@ -2,17 +2,17 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Login from "./Login.jsx";
 import Register from "./Register.jsx";
 
-export default function AuthPopup({ isLoggedIn, isGuest, setIsGuest, setIsLoggedIn, setIsSpectateur, authModal, setAuthModal }) {
+export default function AuthPopup({ isLoggedIn, isGuest, setIsGuest, setIsLoggedIn, authModal, setAuthModal }) {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname.startsWith("/spectateur") || location.pathname.startsWith("/auth/");
+    const isAuthPage = location.pathname === "/login" || location.pathname === "/register" || location.pathname.startsWith("/auth/");
     if (isLoggedIn || isGuest || isAuthPage) return null;
 
     function continueAsGuest() {
         sessionStorage.setItem("guest", "true");
         setIsGuest(true);
-        navigate("/spectateur");
+        navigate("/");
     }
 
     if (authModal) {
@@ -31,7 +31,7 @@ export default function AuthPopup({ isLoggedIn, isGuest, setIsGuest, setIsLogged
                         ></button>
                         <Formulaire
                             setIsLoggedIn={setIsLoggedIn}
-                            setIsSpectateur={setIsSpectateur}
+                            setIsGuest={setIsGuest}
                             isModal={true}
                             onClose={() => setAuthModal(null)}
                             switchTo={(mode) => setAuthModal(mode)}

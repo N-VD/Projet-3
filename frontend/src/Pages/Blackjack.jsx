@@ -8,6 +8,7 @@ import {
 	lireUtilisateur,
 	mainsJoueur,
 	melangerSabot,
+	normaliserSalon,
 	planifierAnimations,
 	SIEGE_INACTIF,
 	totalMain,
@@ -36,18 +37,34 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 
 	useEffect(() => () => window.clearTimeout(minuterieAnimation.current), []);
 
+	// Rôle à cette table, décidé par le serveur au "join" : "dealer", "joueur" ou "spectateur" (null en attendant)
+	const [roleTable, setRoleTable] = useState(null);
+	const peutJouer = roleTable === "joueur" || roleTable === "dealer";
+
+	// La connexion Socket.IO vit avec la table : ouverte en entrant, fermée en quittant (le lobby n'en a pas)
+	const salonId = salon.salonId;
 	useEffect(() => {
 		const socket = connecterSocket();
+		// Rejoindre la room du salon, et de nouveau après une reconnexion (le serveur oublie les rooms)
+		const rejoindre = () => socket.emit("join", salonId, (reponse) => {
+			if (reponse?.error) return setMessage(reponse.error);
+			setRoleTable(reponse.role);
+			// État complet de la table (un spectateur arrive du lobby avec seulement la liste des sièges)
+			if (reponse.salon) setSalon(normaliserSalon(reponse.salon));
+		});
+		rejoindre();
+		socket.on("connect", rejoindre);
 		socket.on("mise_a_jour_table", (data) => {
 			if (data.salon) {
 				setSalon(data.salon);
 			}
 		});
 		return () => {
+			socket.off("connect", rejoindre);
 			socket.off("mise_a_jour_table");
 			deconnecterSocket();
 		};
-	}, [setSalon]);
+	}, [salonId, setSalon]);
 
 	useEffect(() => {
 		let annule = false;
@@ -178,7 +195,7 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 		setSabot(nextDeck);
 		setResultats(prochainsResultats);
 		const socket = connecterSocket();
-		socket.emit("action_jeu", { codeSalon: salon.salonId, salonMaj: salonMisAJour });
+		socket.emit("game:action", { salonMaj: salonMisAJour }); // le serveur connaît déjà le salon de ce socket
 		window.clearTimeout(minuterieAnimation.current);
 		if (nouveauPlan.duree > 0) {
 			setPlanAnimation(nouveauPlan);
@@ -373,6 +390,7 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 	async function quitterSalon() {
 		if (!salon) return;
 		const joueur = salon.players.find((player) => memeIdentifiant(player.id_compte, idUtilisateur));
+		if (!peutJouer || !joueur) return retourAuxSalons(); // spectateur ou dealer : pas de place à libérer
 
 		if (salon.status === "waiting" && joueur) {
 			const joueurs = salon.players
@@ -410,7 +428,7 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 
 	useEffect(() => {
 		const joueursEnAttente = salon?.status === "waiting" && salon.players.some((player) => player.bet > 0);
-		if (!joueursEnAttente) return undefined;
+		if (!joueursEnAttente || !peutJouer) return undefined; // un spectateur ne lance jamais la manche
 		const duree = 10_000;
 		const depart = Date.now();
 		const intervalle = window.setInterval(() => {
@@ -424,7 +442,7 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 			window.clearInterval(intervalle);
 			window.clearTimeout(minuterie);
 		};
-	}, [salon?.salonId, salon?.status, salon?.players]);
+	}, [salon?.salonId, salon?.status, salon?.players, peutJouer]);
 
 	const role = String(utilisateur?.role ?? "").toLowerCase();
 	const estDealer = role === "dealer" || role === "admin";
@@ -457,7 +475,10 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 							) : null}
 							<button className="button is-small is-text has-text-white" onClick={quitterSalon} disabled={chargement || enAnimation}>Quitter la table</button>
 						</div>
-						<div className="level-right"><span className="tag is-dark">Salon {salon.salonId}</span></div>
+						<div className="level-right">
+							{roleTable === "spectateur" && <span className="tag is-info mr-2"><span className="icon"><i className="fas fa-eye" /></span><span>Spectateur</span></span>}
+							<span className="tag is-dark">Salon {salon.salonId}</span>
+						</div>
 					</div>
 					<h1 className="title has-text-centered">Blackjack</h1>
 					<p className="subtitle is-6 has-text-centered">Le blackjack paie 3 pour 2 · Le croupier tire jusqu'à 17</p>
@@ -560,13 +581,13 @@ function Blackjack({ salon, setSalon, setIsLoggedIn, setSoldeGlobal, retourAuxSa
 					{salon.status === "finished" && (
 						<div className="has-text-centered mt-5">
 							<p className="mb-3">Manche terminée. Les résultats sont affichés ci-dessus.</p>
-							<button
+							{peutJouer && <button
 								className="button is-primary is-medium"
 								onClick={nouvelleManche}
 								disabled={chargement}
 							>
 								Nouvelle Manche
-							</button>
+							</button>}
 						</div>
 					)}
 				</div>

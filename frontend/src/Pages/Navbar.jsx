@@ -9,6 +9,8 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn, soldeGlobal }) {
     const isComptePage = location.pathname === "/compte";
     const [solde, setSolde] = useState(null);
 
+    // Déconnecté : pas besoin de remettre solde à null, il n'est affiché que si isLoggedIn
+    // (et la déconnexion recharge la page)
     useEffect(() => {
         let annule = false;
         const controleur = new AbortController();
